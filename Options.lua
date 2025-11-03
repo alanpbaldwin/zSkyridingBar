@@ -83,20 +83,6 @@ local options = {
             name = L["General"],
             inline = true,
             args = {
-                hideDefaultVigorUI = {
-                    order = nextOrder(),
-                    type = "toggle",
-                    name = L["Hide Default Vigor UI"],
-                    desc = L["Hide Blizzard's default vigor/power bar when skyriding"],
-                    get = function(info)
-                        return zSkyridingBar.db.profile.hideDefaultVigorUI
-                    end,
-                    set = function(info, value)
-                        zSkyridingBar.db.profile.hideDefaultVigorUI = value
-                        zSkyridingBar:RefreshConfig()
-                    end,
-                },
-
                 showRechargeIndicator = {
                     order = nextOrder(),
                     type = "toggle",
@@ -221,8 +207,8 @@ local options = {
                         zSkyridingBar.db.profile.frameStrata = defaults.frameStrata
                         zSkyridingBar.db.profile.speedBarWidth = defaults.speedBarWidth
                         zSkyridingBar.db.profile.speedBarHeight = defaults.speedBarHeight
-                        zSkyridingBar.db.profile.vigorBarWidth = defaults.vigorBarWidth
-                        zSkyridingBar.db.profile.vigorBarHeight = defaults.vigorBarHeight
+                        zSkyridingBar.db.profile.chargeBarWidth = defaults.chargeBarWidth
+                        zSkyridingBar.db.profile.chargeBarHeight = defaults.chargeBarHeight
                         zSkyridingBar:RefreshConfig()
                         zSkyridingBar:Print(L["Reset position and size to defaults."])
                     end,
@@ -252,18 +238,18 @@ local options = {
                     end,
                 },
 
-                vigorBarTexture = {
+                chargeBarTexture = {
                     order = nextOrder(),
                     type = "select",
                     dialogControl = "LSM30_Statusbar",
-                    name = L["Vigor Bar Texture"],
-                    desc = L["Texture for the vigor bars"],
+                    name = L["Charge Bar Texture"],
+                    desc = L["Texture for the charge bars"],
                     values = LibStub("LibSharedMedia-3.0"):HashTable("statusbar"),
                     get = function(info)
-                        return zSkyridingBar.db.profile.vigorBarTexture
+                        return zSkyridingBar.db.profile.chargeBarTexture
                     end,
                     set = function(info, value)
-                        zSkyridingBar.db.profile.vigorBarTexture = value
+                        zSkyridingBar.db.profile.chargeBarTexture = value
                         zSkyridingBar:RefreshConfig()
                     end,
                 },
@@ -295,22 +281,22 @@ local options = {
                     end,
                 },
 
-                vigorBarBackgroundColor = {
+                chargeBarBackgroundColor = {
                     order = nextOrder(),
                     type = "color",
-                    name = L["Vigor Bar Background Color"],
-                    desc = L["Background color for the vigor bars"],
+                    name = L["Charge Bar Background Color"],
+                    desc = L["Background color for the charge bars"],
                     hasAlpha = true,
                     get = function(info)
-                        local color = zSkyridingBar.db.profile.vigorBarBackgroundColor
+                        local color = zSkyridingBar.db.profile.chargeBarBackgroundColor
                         if not color then 
-                            local defaults = zSkyridingBar.db.defaults.profile.vigorBarBackgroundColor
+                            local defaults = zSkyridingBar.db.defaults.profile.chargeBarBackgroundColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
                         return color[1], color[2], color[3], color[4]
                     end,
                     set = function(info, r, g, b, a)
-                        zSkyridingBar.db.profile.vigorBarBackgroundColor = {r, g, b, a}
+                        zSkyridingBar.db.profile.chargeBarBackgroundColor = {r, g, b, a}
                         zSkyridingBar:RefreshConfig()
                     end,
                 },
@@ -417,22 +403,22 @@ local options = {
                     type = "description",
                     name = "",
                 },
-                baseVigorColor = {
+                baseChargeColor = {
                     order = nextOrder(),
                     type = "color",
-                    name = L["Base Vigor Color"],
-                    desc = L["Color for base vigor"],
+                    name = L["Base Charge Color"],
+                    desc = L["Color for base charge"],
                     hasAlpha = true,
                     get = function(info)
-                        local color = zSkyridingBar.db.profile.vigorBarSlowRechargeColor
+                        local color = zSkyridingBar.db.profile.chargeBarSlowRechargeColor
                         if not color then 
-                            local defaults = zSkyridingBar.db.defaults.profile.vigorBarSlowRechargeColor
+                            local defaults = zSkyridingBar.db.defaults.profile.chargeBarSlowRechargeColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
                         return color[1], color[2], color[3], color[4]
                     end,
                     set = function(info, r, g, b, a)
-                        zSkyridingBar.db.profile.vigorBarSlowRechargeColor = { r, g, b, a }
+                        zSkyridingBar.db.profile.chargeBarSlowRechargeColor = { r, g, b, a }
                         zSkyridingBar:RefreshConfig()
                     end,
                 },
@@ -443,41 +429,41 @@ local options = {
                     name = "",
                 },
 
-                chargingVigorColor = {
+                chargingChargeColor = {
                     order = nextOrder(),
                     type = "color",
-                    name = L["Charging Vigor Color"],
-                    desc = L["Color when vigor is charging fast"],
+                    name = L["Charging Charge Color"],
+                    desc = L["Color when charge is charging fast"],
                     hasAlpha = true,
                     get = function(info)
-                        local color = zSkyridingBar.db.profile.vigorBarFastRechargeColor
+                        local color = zSkyridingBar.db.profile.chargeBarFastRechargeColor
                         if not color then 
-                            local defaults = zSkyridingBar.db.defaults.profile.vigorBarFastRechargeColor
+                            local defaults = zSkyridingBar.db.defaults.profile.chargeBarFastRechargeColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
                         return color[1], color[2], color[3], color[4]
                     end,
                     set = function(info, r, g, b, a)
-                        zSkyridingBar.db.profile.vigorBarFastRechargeColor = { r, g, b, a }
+                        zSkyridingBar.db.profile.chargeBarFastRechargeColor = { r, g, b, a }
                         zSkyridingBar:RefreshConfig()
                     end,
                 },
-                fullChargeVigorColor = {
+                fullChargeChargeColor = {
                     order = nextOrder(),
                     type = "color",
-                    name = L["Full Charge Vigor Color"],
-                    desc = L["Color when vigor is at full charge"],
+                    name = L["Full Charge Charge Color"],
+                    desc = L["Color when charge is at full charge"],
                     hasAlpha = true,
                     get = function(info)
-                        local color = zSkyridingBar.db.profile.vigorBarFullColor
+                        local color = zSkyridingBar.db.profile.chargeBarFullColor
                         if not color then 
-                            local defaults = zSkyridingBar.db.defaults.profile.vigorBarFullColor
+                            local defaults = zSkyridingBar.db.defaults.profile.chargeBarFullColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
                         return color[1], color[2], color[3], color[4]
                     end,
                     set = function(info, r, g, b, a)
-                        zSkyridingBar.db.profile.vigorBarFullColor = { r, g, b, a }
+                        zSkyridingBar.db.profile.chargeBarFullColor = { r, g, b, a }
                         zSkyridingBar:RefreshConfig()
                     end,
                 },
@@ -498,16 +484,16 @@ local options = {
                         zSkyridingBar.db.profile.speedBarColor = defaults.speedBarColor
                         zSkyridingBar.db.profile.speedBarBoostColor = defaults.speedBarBoostColor
                         zSkyridingBar.db.profile.speedBarThrillColor = defaults.speedBarThrillColor
-                        zSkyridingBar.db.profile.vigorBarColor = defaults.vigorBarColor
-                        zSkyridingBar.db.profile.vigorBarFastRechargeColor = defaults.vigorBarFastRechargeColor
+                        zSkyridingBar.db.profile.chargeBarColor = defaults.chargeBarColor
+                        zSkyridingBar.db.profile.chargeBarFastRechargeColor = defaults.chargeBarFastRechargeColor
                         zSkyridingBar.db.profile.speedIndicatorColor = defaults.speedIndicatorColor
-                        zSkyridingBar.db.profile.vigorBarFullColor = defaults.vigorBarFullColor
-                        zSkyridingBar.db.profile.vigorBarSlowRechargeColor = defaults.vigorBarSlowRechargeColor
-                        zSkyridingBar.db.profile.vigorBarEmptyColor = defaults.vigorBarEmptyColor
+                        zSkyridingBar.db.profile.chargeBarFullColor = defaults.chargeBarFullColor
+                        zSkyridingBar.db.profile.chargeBarSlowRechargeColor = defaults.chargeBarSlowRechargeColor
+                        zSkyridingBar.db.profile.chargeBarEmptyColor = defaults.chargeBarEmptyColor
                         zSkyridingBar.db.profile.speedBarTexture = defaults.speedBarTexture
-                        zSkyridingBar.db.profile.vigorBarTexture = defaults.vigorBarTexture
+                        zSkyridingBar.db.profile.chargeBarTexture = defaults.chargeBarTexture
                         zSkyridingBar.db.profile.speedBarBackgroundColor = defaults.speedBarBackgroundColor
-                        zSkyridingBar.db.profile.vigorBarBackgroundColor = defaults.vigorBarBackgroundColor
+                        zSkyridingBar.db.profile.chargeBarBackgroundColor = defaults.chargeBarBackgroundColor
                         zSkyridingBar:RefreshConfig()
                         zSkyridingBar:Print(L["Reset colors and textures to defaults."])
                     end,

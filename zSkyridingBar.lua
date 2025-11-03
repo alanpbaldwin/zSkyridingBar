@@ -21,13 +21,38 @@ local FAST_FLYING_ZONES = {
   [2569] = true,   -- Aberrus, the Shadowed Crucible
 }
 
+-- Function to get default texture based on availability
+local function getDefaultTexture()
+  -- Try to get LibSharedMedia-3.0
+  local LSM = LibStub("LibSharedMedia-3.0", true)
+  if LSM then
+    -- Check if "Clean" texture is available
+    local textures = LSM:List("statusbar")
+    for _, texture in ipairs(textures) do
+      if texture == "Clean" then
+        return "Clean"
+      end
+    end
+    
+    -- Check if "Solid" texture is available as fallback
+    for _, texture in ipairs(textures) do
+      if texture == "Solid" then
+        return "Solid"
+      end
+    end
+  end
+  
+  -- Ultimate fallback to Blizzard default
+  return "Interface\\TargetingFrame\\UI-StatusBar"
+end
+
 -- Default settings
 local defaults = {
   profile = {
     enabled = true,
     speedShow = true,
     speedUnits = 2, -- 1 = yd/s, 2 = move%
-    hideDefaultVigorUI = true,
+    hideDefaultSpeedUI = true,
     
     -- Position settings
     frameX = 0,
@@ -38,23 +63,22 @@ local defaults = {
     -- Speed bar settings
     speedBarWidth = 256,
     speedBarHeight = 18,
-    speedBarTexture = "Clean",
-    speedBarColor = {0.749, 0.439, 0.173, 1}, -- Default/normal speed (orange)
-    speedBarBoostColor = {0.314, 0.537, 0.157, 1}, -- Boosting speed (green)
-    speedBarThrillColor = {0.482, 0.667, 1, 1}, -- Thrill speed (blue)
+    speedBarTexture = getDefaultTexture(),
+    speedBarColor = {0.749, 0.439, 0.173, 1}, -- not recharging
+    speedBarThrillColor = {0.314, 0.537, 0.157, 1}, -- recharging, but at an optimal speed
+    speedBarBoostColor = {0.2, 0.4, 0.45, 1}, -- super fast color
     speedBarBackgroundColor = {0, 0, 0, 0.4},
     
     -- Vigor bar settings
-    vigorBarWidth = 256,
-    vigorBarHeight = 12,
-    vigorBarSpacing = 2,
-    vigorBarTexture = "Clean",
-    vigorBarColor = {0.2, 0.5, 0.8, 1}, -- Default recharging color (blue)
-    vigorBarFullColor = {0.2, 0.5, 0.8, 1}, -- Full charge color (green)
-    vigorBarFastRechargeColor = {0.25, 0.9, 0.6, 1}, -- Fast recharge color (yellow/orange - Thrill buff)
-    vigorBarSlowRechargeColor = {0.53, 0.29, 0.2, 1}, -- Slow recharge color (yellow-orange)
-    vigorBarEmptyColor = {0, 0, 1, 1}, -- Empty vigor color (blue)
-    vigorBarBackgroundColor = {0, 0, 0, 0.4},
+    chargeBarWidth = 256,
+    chargeBarHeight = 12,
+    chargeBarSpacing = 2,
+    chargeBarTexture = getDefaultTexture(),
+    chargeBarFullColor = {0.2, 0.37, 0.8, 1},
+    chargeBarFastRechargeColor = {0.314, 0.537, 0.3, 1},
+    chargeBarSlowRechargeColor = {0.53, 0.29, 0.2, 1},
+    chargeBarEmptyColor = {0.15, 0.15, 0.15, 0.8},
+    chargeBarBackgroundColor = {0, 0, 0, 0.4},
     
     -- Speed indicator settings
     showSpeedIndicator = true,
@@ -74,7 +98,10 @@ local ascentStart = 0
 local isSlowSkyriding = true
 local mainFrame = nil
 local speedBar = nil
-local vigorFrame = nil
+-- Main addon table
+zSkyridingBar = LibStub("AceAddon-3.0"):GetAddon("zSkyridingBar", true) or LibStub("AceAddon-3.0"):NewAddon("zSkyridingBar", "AceEvent-3.0", "AceTimer-3.0")
+
+local chargeFrame = nil
 local speedText = nil
 local angleText = nil
 local eventFrame = nil
@@ -84,7 +111,7 @@ local moveMode = false
 local GetTime = GetTime
 local C_PlayerInfo = C_PlayerInfo
 local C_UnitAuras = C_UnitAuras
-local UIWidgetPowerBarContainerFrame = UIWidgetPowerBarContainerFrame
+
 
 -- Get vigor recharge speed based on current buffs/conditions
 local function getVigorRechargeSpeed()
@@ -98,12 +125,12 @@ local function getVigorRechargeSpeed()
 end
 
 -- Update bar color based on state
-local function updateVigorBarColor(bar, isFull, isRecharging)
+local function updateChargeBarColor(bar, isFull, isRecharging)
     if not bar then return end
     
     local color
     if isFull then
-        color = zSkyridingBar.db.profile.vigorBarFullColor
+        color = zSkyridingBar.db.profile.chargeBarFullColor
         bar.isFull = true
     elseif isRecharging then
         -- Check for Thrill of the Skies buff like WeakAuras does
@@ -111,14 +138,14 @@ local function updateVigorBarColor(bar, isFull, isRecharging)
         bar.rechargeSpeed = rechargeSpeed
         
         if rechargeSpeed == "fast" then
-            color = zSkyridingBar.db.profile.vigorBarFastRechargeColor
+            color = zSkyridingBar.db.profile.chargeBarFastRechargeColor
         else -- "normal"
-            color = zSkyridingBar.db.profile.vigorBarSlowRechargeColor
+            color = zSkyridingBar.db.profile.chargeBarSlowRechargeColor
         end
         bar.isFull = false
     else
         -- Empty bar - use empty color
-        color = zSkyridingBar.db.profile.vigorBarEmptyColor
+        color = zSkyridingBar.db.profile.chargeBarEmptyColor
         bar.isFull = false
     end
     
@@ -183,7 +210,6 @@ function zSkyridingBar:OnInitialize()
     eventFrame:RegisterEvent("PLAYER_LOGIN")
     eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
     eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-    eventFrame:RegisterEvent("UPDATE_UI_WIDGET")
     eventFrame:RegisterEvent("UNIT_POWER_UPDATE")
     eventFrame:SetScript("OnEvent", function(frame, event, ...)
         if event == "ADDON_LOADED" and select(1, ...) == "zSkyridingBar" then
@@ -196,9 +222,6 @@ function zSkyridingBar:OnInitialize()
             zSkyridingBar:OnSpellcastSucceeded(event, ...)
         elseif event == "ZONE_CHANGED_NEW_AREA" then
             zSkyridingBar:OnZoneChanged()
-        elseif event == "UPDATE_UI_WIDGET" then
-            local widgetInfo = select(1, ...)
-            zSkyridingBar:OnUpdateUIWidget(widgetInfo)
         elseif event == "UNIT_POWER_UPDATE" then
             local unitTarget, powerType = select(1, ...), select(2, ...)
             zSkyridingBar:OnUnitPowerUpdate(unitTarget, powerType)
@@ -288,18 +311,18 @@ function zSkyridingBar:RefreshConfig()
         end
         
         -- Update vigor frame size and textures
-        if vigorFrame then
-            vigorFrame:SetSize(self.db.profile.speedBarWidth, 30)
+        if chargeFrame then
+            chargeFrame:SetSize(self.db.profile.speedBarWidth, 30)
             
             -- Update vigor bar textures and background colors
-            local vigorTexture = LibStub("LibSharedMedia-3.0"):Fetch("statusbar", self.db.profile.vigorBarTexture) or "Interface\\TargetingFrame\\UI-StatusBar"
+            local vigorTexture = LibStub("LibSharedMedia-3.0"):Fetch("statusbar", self.db.profile.chargeBarTexture) or "Interface\\TargetingFrame\\UI-StatusBar"
             for i = 1, 4 do
-                local bar = vigorFrame["bar" .. i]
+                local bar = chargeFrame["bar" .. i]
                 if bar then
                     bar:SetStatusBarTexture(vigorTexture)
                     if bar.bg then
                         bar.bg:SetTexture(vigorTexture)
-                        bar.bg:SetVertexColor(unpack(self.db.profile.vigorBarBackgroundColor))
+                        bar.bg:SetVertexColor(unpack(self.db.profile.chargeBarBackgroundColor))
                     end
                 end
             end
@@ -310,13 +333,7 @@ function zSkyridingBar:RefreshConfig()
         mainFrame:SetSize(self.db.profile.speedBarWidth, totalHeight)
         
         -- Update default vigor UI visibility
-        if UIWidgetPowerBarContainerFrame then
-            if self.db.profile.hideDefaultVigorUI then
-                UIWidgetPowerBarContainerFrame:Hide()
-            else
-                UIWidgetPowerBarContainerFrame:Show()
-            end
-        end
+
     end
 end
 
@@ -388,51 +405,51 @@ function zSkyridingBar:CreateUI()
     end
     
     -- Create vigor frame (will hold multiple vigor bars)
-    vigorFrame = CreateFrame("Frame", "zSkyridingBarVigorFrame", mainFrame)
-    vigorFrame:SetSize(self.db.profile.speedBarWidth, 30)
-    vigorFrame:SetPoint("TOP", speedBar, "BOTTOM", 0, -5)
+    chargeFrame = CreateFrame("Frame", "zSkyridingBarVigorFrame", mainFrame)
+    chargeFrame:SetSize(self.db.profile.speedBarWidth, 30)
+    chargeFrame:SetPoint("TOP", speedBar, "BOTTOM", 0, -5)
     
-    self:CreateVigorBars()
+    self:CreateChargeBars()
     
     -- Initially hide the frame
     mainFrame:Hide()
 end
 
-function zSkyridingBar:CreateVigorBars()
+function zSkyridingBar:CreateChargeBars()
     -- Create individual vigor charge bars
-    if not vigorFrame then
+    if not chargeFrame then
         return
     end
     
     -- Initialize bars array
-    vigorFrame.bars = vigorFrame.bars or {}
+    chargeFrame.bars = chargeFrame.bars or {}
     
     -- Clear existing bars
-    for i, bar in ipairs(vigorFrame.bars) do
+    for i, bar in ipairs(chargeFrame.bars) do
         if bar then
             bar:Hide()
             bar:SetParent(nil)
         end
     end
-    vigorFrame.bars = {}
+    chargeFrame.bars = {}
     
     -- Create new bars (typically 3-6 charges for skyriding)
     local numBars = 6  -- Max possible vigor charges
-    local barWidth = (self.db.profile.vigorBarWidth - ((numBars - 1) * self.db.profile.vigorBarSpacing)) / numBars
+    local barWidth = (self.db.profile.chargeBarWidth - ((numBars - 1) * self.db.profile.chargeBarSpacing)) / numBars
     
     for i = 1, numBars do
-        local bar = CreateFrame("StatusBar", "zSkyridingBarVigorBar" .. i, vigorFrame)
-        bar:SetSize(barWidth, self.db.profile.vigorBarHeight)
+        local bar = CreateFrame("StatusBar", "zSkyridingBarChargeBar" .. i, chargeFrame)
+        bar:SetSize(barWidth, self.db.profile.chargeBarHeight)
         
         if i == 1 then
-            bar:SetPoint("LEFT", vigorFrame, "LEFT", 0, 0)
+            bar:SetPoint("LEFT", chargeFrame, "LEFT", 0, 0)
         else
-            bar:SetPoint("LEFT", vigorFrame.bars[i-1], "RIGHT", self.db.profile.vigorBarSpacing, 0)
+            bar:SetPoint("LEFT", chargeFrame.bars[i-1], "RIGHT", self.db.profile.chargeBarSpacing, 0)
         end
         
-        local vigorTexture = LibStub("LibSharedMedia-3.0"):Fetch("statusbar", self.db.profile.vigorBarTexture) or "Interface\\TargetingFrame\\UI-StatusBar"
+        local vigorTexture = LibStub("LibSharedMedia-3.0"):Fetch("statusbar", self.db.profile.chargeBarTexture) or "Interface\\TargetingFrame\\UI-StatusBar"
         bar:SetStatusBarTexture(vigorTexture)
-        bar:SetStatusBarColor(unpack(self.db.profile.vigorBarColor))
+        -- Don't set initial color here - let updateChargeBarColor handle it
         bar:SetMinMaxValues(0, 100) -- Use 0-100 range for better precision
         bar:SetValue(0)
         
@@ -447,7 +464,7 @@ function zSkyridingBar:CreateVigorBars()
         local bg = bar:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints()
         bg:SetTexture(vigorTexture)
-        bg:SetVertexColor(unpack(self.db.profile.vigorBarBackgroundColor))
+        bg:SetVertexColor(unpack(self.db.profile.chargeBarBackgroundColor))
         bar.bg = bg
         
         -- Border
@@ -459,7 +476,11 @@ function zSkyridingBar:CreateVigorBars()
         })
         border:SetBackdropBorderColor(0, 0, 0, 1)
         
-        vigorFrame.bars[i] = bar
+        chargeFrame.bars[i] = bar
+        
+        -- Set initial empty state color to prevent flashing
+        updateChargeBarColor(bar, false, false)
+        
         bar:Hide() -- Initially hidden
     end
 end
@@ -479,18 +500,12 @@ function zSkyridingBar:OnZoneChanged()
     self:CheckSkyridingAvailability()
 end
 
-function zSkyridingBar:OnUpdateUIWidget(widgetInfo)
-    -- Handle UI widget updates for vigor bars
-    if widgetInfo and widgetInfo.widgetSetID == 283 then
-        -- Debug: print("Vigor widget update received:", widgetInfo.widgetID)
-        self:UpdateVigorFromWidget(widgetInfo)
-    end
-end
+
 
 function zSkyridingBar:OnUnitPowerUpdate(unitTarget, powerType)
     -- Handle power updates for vigor
     if unitTarget == "player" and powerType == "ALTERNATE" then
-        self:UpdateVigorBars()
+        self:UpdateChargeBars()
     end
 end
 
@@ -524,11 +539,7 @@ end
 
 function zSkyridingBar:StartTracking()
     if not updateHandle and active then
-        -- Hide default vigor UI if enabled
-        if self.db.profile.hideDefaultVigorUI and UIWidgetPowerBarContainerFrame:IsVisible() then
-            self.hiddenDefaultUI = true
-            UIWidgetPowerBarContainerFrame:Hide()
-        end
+
         
         -- Start update ticker
         updateHandle = self:ScheduleRepeatingTimer("UpdateTracking", TICK_RATE)
@@ -539,7 +550,7 @@ function zSkyridingBar:StartTracking()
         end
         
         -- Initial vigor update
-        self:UpdateVigorBars()
+        self:UpdateChargeBars()
     end
 end
 
@@ -549,11 +560,7 @@ function zSkyridingBar:StopTracking()
         updateHandle = nil
     end
     
-    -- Restore default UI if we hid it
-    if self.hiddenDefaultUI then
-        UIWidgetPowerBarContainerFrame:Show()
-        self.hiddenDefaultUI = false
-    end
+
     
     -- Hide main frame
     if mainFrame then
@@ -620,116 +627,86 @@ function zSkyridingBar:UpdateTracking()
         speedBar:SetStatusBarColor(unpack(self.db.profile.speedBarColor)) -- Default orange
     end
     
-    -- Note: Vigor bars are updated via UPDATE_UI_WIDGET and UNIT_POWER_UPDATE events only
+    -- Also update vigor/charge bars periodically (for 11.2.7 charge system)
+    self:UpdateChargeBars()
 end
 
-function zSkyridingBar:UpdateVigorFromWidget(widgetInfo)
-    -- Use UI widget system like WeakAuras does
-    if not widgetInfo or not widgetInfo.widgetID then
-        return
-    end
-    
-    local widgetData = C_UIWidgetManager.GetFillUpFramesWidgetVisualizationInfo(widgetInfo.widgetID)
-    
-    if not widgetData or not vigorFrame or not vigorFrame.bars then
-        return
-    end
-    
-    -- Hide all bars first
-    for i = 1, 6 do
-        local bar = vigorFrame.bars[i]
-        if bar then
-            bar:Hide()
-        end
-    end
-    
-    -- Update bars based on widget data  
-    for i = 1, math.min(widgetData.numTotalFrames, 6) do
-        local bar = vigorFrame.bars[i]
-        if bar then
-            bar:Show()
-            
-            -- Set up the bar range (0-100 for percentage-like display)
-            bar:SetMinMaxValues(0, 100)
-            
-            if widgetData.numFullFrames >= i then
-                -- Full charge - instantly fill to 100%
-                updateVigorBarColor(bar, true, false)
-                smoothSetValue(bar, 100)
-            elseif widgetData.numFullFrames + 1 == i then
-                -- Currently regenerating charge - show smooth progress
-                local progress = 0
-                if widgetData.fillMax > widgetData.fillMin then
-                    progress = ((widgetData.fillValue - widgetData.fillMin) / (widgetData.fillMax - widgetData.fillMin)) * 100
-                end
-                updateVigorBarColor(bar, false, true)
-                smoothSetValue(bar, math.max(0, math.min(100, progress)))
-            else
-                -- Empty charge
-                updateVigorBarColor(bar, false, false)
-                smoothSetValue(bar, 0)
-            end
-        end
-    end
-end
 
-function zSkyridingBar:UpdateVigorBars()
-    if not vigorFrame or not vigorFrame.bars then
+
+function zSkyridingBar:UpdateChargeBars()
+    if not chargeFrame or not chargeFrame.bars then
         return
     end
     
-    -- Get vigor information from power type as fallback
-    local vigorType = Enum.PowerType.AlternateMount or 99 -- Skyriding vigor
-    local currentVigor = UnitPower("player", vigorType)
-    local maxVigor = UnitPowerMax("player", vigorType)
+    local surgeForwardID = 372608 -- Surge Forward spell
+    local spellChargeInfo = C_Spell.GetSpellCharges(surgeForwardID)
     
-    if maxVigor <= 0 then
-        -- Hide all vigor bars if no vigor system active
-        for i, bar in ipairs(vigorFrame.bars) do
+    -- Debug output (can be removed later)
+    -- print(string.format("zSkyridingBar: Charges: %s/%s", 
+    --     spellChargeInfo and spellChargeInfo.currentCharges or "?",
+    --     spellChargeInfo and spellChargeInfo.maxCharges or "?"))
+    
+    if spellChargeInfo and spellChargeInfo.currentCharges and spellChargeInfo.maxCharges then
+        local charges = spellChargeInfo.currentCharges
+        local maxCharges = spellChargeInfo.maxCharges
+        local start = spellChargeInfo.cooldownStartTime
+        local duration = spellChargeInfo.cooldownDuration
+        -- Show bars up to maxCharges (should be 6)
+        for i = 1, math.min(maxCharges, 6) do
+            local bar = chargeFrame.bars[i]
             if bar then
-                bar:Hide()
-            end
-        end
-        return
-    end
-    
-    -- If we're at full vigor, hide the bars (like WeakAuras does)
-    if currentVigor == maxVigor then
-        for i, bar in ipairs(vigorFrame.bars) do
-            if bar then
-                bar:Hide()
-            end
-        end
-        return
-    end
-    
-    -- Calculate charges (each charge is typically 100 vigor)
-    local chargeSize = math.floor(maxVigor / 6) -- Assume max 6 charges
-    if chargeSize <= 0 then chargeSize = 100 end
-    
-    local numCharges = math.floor(maxVigor / chargeSize)
-    local currentCharge = math.floor(currentVigor / chargeSize)
-    local partialCharge = (currentVigor % chargeSize) / chargeSize
-    
-    -- Update visible bars (fallback method)
-    for i = 1, 6 do
-        local bar = vigorFrame.bars[i]
-        if bar then
-            if i <= numCharges then
                 bar:Show()
                 bar:SetMinMaxValues(0, 100)
-                if i <= currentCharge then
-                    updateVigorBarColor(bar, true, false)
-                    smoothSetValue(bar, 100) -- Full charge
-                elseif i == currentCharge + 1 then
-                    updateVigorBarColor(bar, false, true)
-                    smoothSetValue(bar, partialCharge * 100) -- Partial charge as percentage
+                
+                if i <= charges then
+                    -- Full charge - set instantly
+                    updateChargeBarColor(bar, true, false)
+                    bar:SetValue(100)
+                    bar.currentValue = 100
+                    bar.targetValue = 100
+                elseif i == charges + 1 and start and duration and duration > 0 then
+                    -- Currently recharging (next charge) - smooth animation
+                    local elapsed = GetTime() - start
+                    local progress = math.min(100, (elapsed / duration) * 100)
+                    updateChargeBarColor(bar, false, true)
+                    smoothSetValue(bar, progress)
                 else
-                    updateVigorBarColor(bar, false, false)
-                    smoothSetValue(bar, 0) -- Empty charge
+                    -- Empty charge - set instantly
+                    updateChargeBarColor(bar, false, false)
+                    bar:SetValue(0)
+                    bar.currentValue = 0
+                    bar.targetValue = 0
                 end
-            else
+            end
+        end
+        
+        -- Hide any extra bars beyond maxCharges
+        for i = maxCharges + 1, 6 do
+            local bar = chargeFrame.bars[i]
+            if bar then
                 bar:Hide()
+            end
+        end
+    else
+        -- Fallback: Show test bars if spell charges not available
+        -- print("zSkyridingBar: Spell charges not available, showing test bars")
+        for i = 1, 6 do
+            local bar = chargeFrame.bars[i]
+            if bar then
+                bar:Show()
+                bar:SetMinMaxValues(0, 100)
+                -- Show first 3 as full, rest as empty for testing
+                if i <= 3 then
+                    updateChargeBarColor(bar, true, false)
+                    bar:SetValue(100)
+                    bar.currentValue = 100
+                    bar.targetValue = 100
+                else
+                    updateChargeBarColor(bar, false, false)
+                    bar:SetValue(0)
+                    bar.currentValue = 0
+                    bar.targetValue = 0
+                end
             end
         end
     end
@@ -822,8 +799,8 @@ function zSkyridingBar:UpdateFrameAppearance()
         angleText:SetFont(self.db.profile.fontFace, self.db.profile.fontSize, self.db.profile.fontFlags)
     end
     
-    if vigorFrame then
-        self:CreateVigorBars()
+    if chargeFrame then
+        self:CreateChargeBars()
     end
     
     -- Update speed indicator
