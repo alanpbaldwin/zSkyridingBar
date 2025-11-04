@@ -179,7 +179,7 @@ local function smoothSetValue(bar, targetValue)
     -- Start smooth animation
     local startValue = bar.currentValue
     local startTime = GetTime()
-    local duration = 0.3 -- 300ms animation
+    local duration = 0.05 -- 100ms animation
     
     bar.smoothTimer = zSkyridingBar:ScheduleRepeatingTimer(function()
         local elapsed = GetTime() - startTime
@@ -695,14 +695,14 @@ function zSkyridingBar:UpdateChargeBars()
                     bar:SetValue(100)
                     bar.currentValue = 100
                     bar.targetValue = 100
-                    bar:Show()
+                    bar:GetStatusBarTexture():SetAlpha(1)
                 elseif i == charges + 1 and start and duration and duration > 0 then
                     -- Currently recharging (next charge) - smooth animation
                     local elapsed = GetTime() - start
                     local progress = math.min(100, (elapsed / duration) * 100)
                     updateChargeBarColor(bar, false, true)
                     smoothSetValue(bar, progress)
-                    bar:Show()
+                    bar:GetStatusBarTexture():SetAlpha(1)
                 else
                     -- Empty charge - set instantly
                     updateChargeBarColor(bar, false, false)
@@ -710,7 +710,7 @@ function zSkyridingBar:UpdateChargeBars()
                     bar.currentValue = 0
                     bar.targetValue = 0
                     -- Hide the bar with SetAlpha
-                    bar:Hide()
+                    bar:GetStatusBarTexture():SetAlpha(0)
                 end
             end
         end
@@ -839,7 +839,7 @@ function zSkyridingBar:UpdateFrameAppearance()
 
         angleText:SetFont(self.db.profile.fontFace, self.db.profile.fontSize, self.db.profile.fontFlags)
     end
-    
+
     -- Update speed indicator
     if speedBar and speedBar.speedIndicator then
         speedBar.speedIndicator:SetColorTexture(unpack(self.db.profile.speedIndicatorColor))
