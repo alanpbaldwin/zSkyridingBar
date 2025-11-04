@@ -569,15 +569,21 @@ function zSkyridingBar:UpdateTracking()
     -- Get current skyriding info
     local isGliding, isFlying, forwardSpeed = C_PlayerInfo.GetGlidingInfo()
     
-    -- Show/hide speed frame based on skyriding state
+    -- Show/hide speed frame and vigor frame based on skyriding state
     if not isGliding and not isFlying then
         if speedBar then
             speedBar:Hide()
+        end
+        if vigorFrame then
+            vigorFrame:Hide()
         end
         return
     else
         if speedBar then
             speedBar:Show()
+        end
+        if vigorFrame then
+            vigorFrame:Show()
         end
     end
     
