@@ -617,10 +617,16 @@ function zSkyridingBar:UpdateTracking()
         if speedBar then
             speedBar:Hide()
         end
+        if chargeFrame then
+            chargeFrame:Hide()
+        end
         return
     else
         if speedBar then
             speedBar:Show()
+        end
+        if chargeFrame then
+            chargeFrame:Show()
         end
     end
     
