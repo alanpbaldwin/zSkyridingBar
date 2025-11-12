@@ -519,6 +519,11 @@ function zSkyridingBar:UpdateSpeedBarColors()
         return
     end
     
+    -- Don't update UI during combat lockdown to avoid taint
+    if InCombatLockdown() then
+        return
+    end
+    
     -- Check for Thrill of the Skies buff (same logic as Liroo)
     local thrill = C_UnitAuras.GetPlayerAuraBySpellID(THRILL_BUFF_ID)
     local time = GetTime()
@@ -666,6 +671,11 @@ end
 
 function zSkyridingBar:UpdateChargeBars()
     if not chargeFrame or not chargeFrame.bars then
+        return
+    end
+    
+    -- Don't update UI during combat lockdown to avoid taint
+    if InCombatLockdown() then
         return
     end
     
