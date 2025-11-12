@@ -674,7 +674,7 @@ function zSkyridingBar:UpdateChargeBars()
         return
     end
     
-    -- Don't update UI during combat lockdown to avoid taint
+    -- Don't update UI during combat lockdown to avoid secret value issues in Midnight
     if InCombatLockdown() then
         return
     end
@@ -683,7 +683,7 @@ function zSkyridingBar:UpdateChargeBars()
     local spellChargeInfo = C_Spell.GetSpellCharges(surgeForwardID)
     
     -- Debug output (can be removed later)
-    -- print(string.format("zSkyridingBar: Charges: %s/%s", 
+    -- print(string.format("zSkyRidingBar: Charges: %s/%s", 
     --     spellChargeInfo and spellChargeInfo.currentCharges or "?",
     --     spellChargeInfo and spellChargeInfo.maxCharges or "?"))
     
@@ -734,7 +734,7 @@ function zSkyridingBar:UpdateChargeBars()
         end
     else
         -- Fallback: Show test bars if spell charges not available
-        -- print("zSkyridingBar: Spell charges not available, showing test bars")
+        -- print("zSkyRidingBar: Spell charges not available, showing test bars")
         for i = 1, 6 do
             local bar = chargeFrame.bars[i]
             if bar then
