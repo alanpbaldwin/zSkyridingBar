@@ -7,6 +7,7 @@ local zSkyridingBar = LibStub("AceAddon-3.0"):NewAddon("zSkyridingBar", "AceTime
 -- Constants from WeakAuras
 local ASCENT_SPELL_ID = 372610
 local THRILL_BUFF_ID = 377234
+local STATIC_CHARGE_BUFF_ID = 418590
 local SLOW_SKYRIDING_RATIO = 705 / 830
 local ASCENT_DURATION = 3.5
 local TICK_RATE = 1 / 20  -- 20 FPS updates
@@ -113,6 +114,10 @@ local speedText = nil
 local angleText = nil
 local eventFrame = nil
 local moveMode = false
+local staticChargeFrame = nil
+local staticChargeIcon = nil
+local staticChargeText = nil
+local currentStaticChargeStacks = 0
 
 -- Localized functions
 local GetTime = GetTime
@@ -426,6 +431,43 @@ function zSkyridingBar:CreateUI()
         speedBar.speedIndicator = speedIndicator
     end
     
+    -- Create Static Charge frame (to the left of speed bar)
+    staticChargeFrame = CreateFrame("Frame", "zSkyridingBarStaticChargeFrame", mainFrame)
+    staticChargeFrame:SetSize(40, self.db.profile.speedBarHeight)
+    staticChargeFrame:SetPoint("RIGHT", mainFrame, "LEFT", -5, 4)
+    
+    -- Static Charge icon
+    staticChargeIcon = staticChargeFrame:CreateTexture(nil, "ARTWORK")
+    staticChargeIcon:SetSize(36, 36)
+    staticChargeIcon:SetPoint("CENTER", staticChargeFrame, "CENTER", 0, 0)
+    staticChargeIcon:Hide()
+    
+    -- Static Charge lightning border (for 10 stacks effect)
+    staticChargeBorder = staticChargeFrame:CreateTexture(nil, "OVERLAY")
+    staticChargeBorder:SetSize(44, 44)
+    staticChargeBorder:SetPoint("CENTER", staticChargeIcon, "CENTER", 0, 0)
+    staticChargeBorder:SetTexture("Interface\\Buttons\\WHITE8x8")
+    staticChargeBorder:SetBlendMode("ADD")
+    staticChargeBorder:SetVertexColor(1, 1, 0.3, 0.3)
+    staticChargeBorder:Hide()
+    
+    -- Create a glow effect layer for the border (animation is achieved through vertex color changes)
+    staticChargeGlow = staticChargeFrame:CreateTexture(nil, "OVERLAY")
+    staticChargeGlow:SetSize(48, 48)
+    staticChargeGlow:SetPoint("CENTER", staticChargeIcon, "CENTER", 0, 0)
+    staticChargeGlow:SetTexture("Interface\\Buttons\\WHITE8x8")
+    staticChargeGlow:SetBlendMode("ADD")
+    staticChargeGlow:SetVertexColor(1, 0.8, 0, 0.1)
+    staticChargeGlow:Hide()
+    
+    -- Static Charge stack count text
+    staticChargeText = staticChargeFrame:CreateFontString(nil, "OVERLAY")
+    staticChargeText:SetFont(self.db.profile.fontFace, 14, self.db.profile.fontFlags)
+    staticChargeText:SetPoint("BOTTOM", staticChargeIcon, "BOTTOM", 0, -5)
+    staticChargeText:SetTextColor(1, 1, 1, 1)
+    staticChargeText:SetText("")
+    staticChargeText:Hide()
+    
     -- Create vigor frame (will hold multiple vigor bars)
     chargeFrame = CreateFrame("Frame", "zSkyridingBarVigorFrame", mainFrame)
     chargeFrame:SetSize(self.db.profile.speedBarWidth, 30)
@@ -652,6 +694,9 @@ function zSkyridingBar:UpdateTracking()
         if chargeFrame then
             chargeFrame:Hide()
         end
+        if staticChargeFrame then
+            staticChargeFrame:Hide()
+        end
         return
     else
         if speedBar then
@@ -659,6 +704,9 @@ function zSkyridingBar:UpdateTracking()
         end
         if chargeFrame then
             chargeFrame:Show()
+        end
+        if staticChargeFrame then
+            staticChargeFrame:Show()
         end
     end
     
@@ -692,9 +740,64 @@ function zSkyridingBar:UpdateTracking()
     
     -- Also update vigor/charge bars periodically (for 11.2.7 charge system)
     self:UpdateChargeBars()
+    
+    -- Update Static Charge display
+    self:UpdateStaticCharge()
 end
 
 
+
+function zSkyridingBar:UpdateStaticCharge()
+    if not staticChargeFrame or not staticChargeIcon then
+        return
+    end
+    
+    -- Don't update UI during combat lockdown
+    if InCombatLockdown() then
+        return
+    end
+    
+    -- Get Static Charge buff info
+    local staticChargeAura = C_UnitAuras.GetPlayerAuraBySpellID(STATIC_CHARGE_BUFF_ID)
+    
+    if staticChargeAura then
+        -- Static Charge uses 'applications' field for stack count
+        local stacks = staticChargeAura.applications or 0
+        
+        if stacks and stacks > 0 then
+            -- Show the icon and stack count
+            staticChargeIcon:Show()
+            staticChargeText:Show()
+            staticChargeText:SetText(stacks)
+            
+            -- Set the icon texture to the buff icon
+            -- Use texture coordinates to get the circular portion (standard 0.08 inset for circular icons)
+            if staticChargeAura.icon then
+                staticChargeIcon:SetTexture(staticChargeAura.icon)
+                staticChargeIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            end
+            
+            -- At 10 stacks, brighten the icon and show lightning border
+            if stacks == 10 then
+                staticChargeIcon:SetVertexColor(1.2, 1.2, 1.0)
+                staticChargeBorder:Show()
+            else
+                staticChargeIcon:SetVertexColor(1, 1, 1)
+                staticChargeBorder:Hide()
+            end
+            
+            currentStaticChargeStacks = stacks
+            return
+        end
+    end
+    
+    -- No static charge - hide everything
+    staticChargeIcon:Hide()
+    staticChargeText:Hide()
+    staticChargeBorder:Hide()
+    staticChargeGlow:Hide()
+    currentStaticChargeStacks = 0
+end
 
 function zSkyridingBar:UpdateChargeBars()
     if not chargeFrame or not chargeFrame.bars then
@@ -920,6 +1023,26 @@ SlashCmdList["ZSKYRIDINGBAR"] = function(msg)
         end
     elseif msg == "move" then
         zSkyridingBar:ToggleMoveMode()
+    elseif msg == "debug" then
+        -- Debug command to check buff status
+        local aura = C_UnitAuras.GetPlayerAuraBySpellID(STATIC_CHARGE_BUFF_ID)
+        if aura then
+            print("|cff00ff00zSkyridingBar|r: Static Charge found!")
+            print("  Icon:", aura.icon)
+            print("  Charges:", aura.charges)
+            print("  NumStacks:", aura.numStacks)
+            print("  Stacks:", aura.stacks)
+            print("  Applications:", aura.applications)
+            print("  ExpirationTime:", aura.expirationTime)
+            print("  Duration:", aura.duration)
+            -- Print all keys
+            print("  All aura keys:")
+            for k, v in pairs(aura) do
+                print("    " .. tostring(k) .. " = " .. tostring(v))
+            end
+        else
+            print("|cff00ff00zSkyridingBar|r: Static Charge NOT found")
+        end
     else
         print("|cff00ff00zSkyridingBar|r commands:")
         print("  |cffFFFFFF/zsb|r - Open options panel")
