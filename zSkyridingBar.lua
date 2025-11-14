@@ -23,6 +23,10 @@ local FAST_FLYING_ZONES = {
     [2569] = true, -- Aberrus, the Shadowed Crucible
 }
 
+-- Speed thresholds (in yd/s) for color detection
+local SLOW_ZONE_MAX_GLIDE = 55.2   -- Max gliding speed in normal zones (789%)
+local FAST_ZONE_MAX_GLIDE = 65.0   -- Max gliding speed in Dragonflight zones (929%)
+
 -- Function to get default texture based on availability
 local function getDefaultTexture()
     -- Try to get LibSharedMedia-3.0
@@ -742,22 +746,22 @@ function zSkyridingBar:UpdateSpeedBarColors(currentSpeed)
         return
     end
 
-    local time = GetTime()
-    -- Check if Ascent was cast recently (within 3.5 seconds) - this is the "boosting" state
-    local boosting = time < ascentStart + ASCENT_DURATION
+    -- Check for Thrill of the Skies buff (indicates vigour recharging)
+    local thrill = C_UnitAuras.GetPlayerAuraBySpellID(THRILL_BUFF_ID)
     
-    -- Determine max speed based on zone
-    local maxSpeed = isSlowSkyriding and 705 or 830
-    -- Check if we're at optimal speed (60% of max or higher)
-    local atOptimalSpeed = currentSpeed and currentSpeed >= (maxSpeed * 0.6) or false
+    -- Determine max gliding speed based on zone
+    local maxGlideSpeed = isSlowSkyriding and SLOW_ZONE_MAX_GLIDE or FAST_ZONE_MAX_GLIDE
+    
+    -- Check if we're in fast flying mode (speed exceeds max gliding speed)
+    local inFastMode = currentSpeed and currentSpeed > (maxGlideSpeed+.1) or false
 
-    -- Update color based on state (priority: boosting > optimal speed > default)
-    if boosting then
-        speedBar:SetStatusBarColor(unpack(self.db.profile.speedBarBoostColor))  -- Boost color when ascending
-    elseif atOptimalSpeed then
-        speedBar:SetStatusBarColor(unpack(self.db.profile.speedBarThrillColor)) -- Thrill color when at optimal speed
+    -- Update color based on state (priority: fast flying > thrill (optimal) > default)
+    if inFastMode then
+        speedBar:SetStatusBarColor(unpack(self.db.profile.speedBarBoostColor))  -- Fast color when flying faster than gliding cap
+    elseif thrill then
+        speedBar:SetStatusBarColor(unpack(self.db.profile.speedBarThrillColor)) -- Thrill color when recharging but gliding normally
     else
-        speedBar:SetStatusBarColor(unpack(self.db.profile.speedBarColor))       -- Default color for normal speed
+        speedBar:SetStatusBarColor(unpack(self.db.profile.speedBarColor))       -- Default color for normal gliding
     end
 end
 
