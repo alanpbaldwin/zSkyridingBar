@@ -122,7 +122,7 @@ local THEMES = {
         chargeBarSpacing = 0,
         speedChargeSpacing = 0,
         speedIndicatorHeight = 28,
-        chargeBarTexture = "Solid", -- Use Solid texture for thick look
+        chargeBarTexture = "default", -- Use Solid texture for thick look
         borderSize = 0,
     },
 }

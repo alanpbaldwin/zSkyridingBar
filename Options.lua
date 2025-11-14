@@ -93,8 +93,16 @@ local options = {
                     end,
                     set = function(info, value)
                         zSkyridingBar.db.profile.theme = value
+                        -- Apply theme with forceThemeSettings = true when explicitly changing theme
+                        zSkyridingBar:applyTheme(value, true)
                         zSkyridingBar:RefreshConfig()
                     end,
+                },
+                spacerTheme = {
+                    order = nextOrder(),
+                    type = "description",
+                    name = "",
+                    width = "full",
                 },
 
                 showRechargeIndicator = {
