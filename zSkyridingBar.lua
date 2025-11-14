@@ -560,7 +560,7 @@ function zSkyridingBar:CreateUI()
     -- Create Static Charge frame (to the left of speed bar)
     staticChargeFrame = CreateFrame("Frame", "zSkyridingBarStaticChargeFrame", mainFrame)
     staticChargeFrame:SetSize(40, self.db.profile.speedBarHeight)
-    staticChargeFrame:SetPoint("RIGHT", mainFrame, "LEFT", -5, 4)
+    staticChargeFrame:SetPoint("RIGHT", mainFrame, "LEFT", -5, 0)
 
     -- Static Charge icon
     staticChargeIcon = staticChargeFrame:CreateTexture(nil, "ARTWORK")
