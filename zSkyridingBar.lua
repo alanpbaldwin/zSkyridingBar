@@ -785,7 +785,7 @@ function zSkyridingBar:CheckSkyridingAvailability()
 
     -- Show anywhere skyriding is available - let the game handle location restrictions
     if hasSkyriding then
-        isSlowSkyriding = not FAST_FLYING_ZONES[mapID]
+        isSlowSkyriding = not FAST_FLYING_ZONES[select(8, GetInstanceInfo())]
 
         if not active then
             active = true
