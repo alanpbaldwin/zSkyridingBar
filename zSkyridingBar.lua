@@ -3,6 +3,13 @@
 
 -- Initialize Ace addon
 local zSkyridingBar = LibStub("AceAddon-3.0"):NewAddon("zSkyridingBar", "AceTimer-3.0")
+local BuildVersion, BuildBuild, BuildDate, BuildInterface = GetBuildInfo()
+
+-- print function that accepts everything normal print would, like args and variables etc. I can  pass multiple args and concatenated strings
+function zSkyridingBar.print(...)
+    local args = { ... }
+    DEFAULT_CHAT_FRAME:AddMessage("|cff0b808fzSkyridingBar:|r " .. table.concat(args, " "))
+end
 
 -- Constants
 local ASCENT_SPELL_ID = 372610
@@ -37,8 +44,12 @@ local FAST_FLYING_ZONES = {
 local SLOW_ZONE_MAX_GLIDE = 55.2 -- Max gliding speed in normal zones (789%)
 local FAST_ZONE_MAX_GLIDE = 65.0 -- Max gliding speed in Dragonflight zones (929%)
 
-function zSkyridingBar.print(msg)
-    DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99zSkyridingBar:|r " .. msg)
+local CompatCheck = false
+
+if BuildInterface <= 110205 then
+    CompatCheck = true
+    UIWidgetPowerBarContainerFrame = UIWidgetPowerBarContainerFrame
+    SECOND_WIND_SPELL_ID = 425782 -- Compatibility mode spell ID
 end
 
 -- Function to get default texture based on availability
@@ -311,7 +322,7 @@ local function smoothSetValue(bar, targetValue)
 
     local startValue = bar.currentValue
     local startTime = GetTime()
-    local duration = 0.05
+    local duration = 0.2
 
     bar.smoothTimer = zSkyridingBar:ScheduleRepeatingTimer(function()
         local elapsed = GetTime() - startTime
@@ -389,6 +400,9 @@ function zSkyridingBar:OnInitialize()
     eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     eventFrame:RegisterEvent("ZONE_CHANGED")
     eventFrame:RegisterEvent("UNIT_POWER_UPDATE")
+    if CompatCheck then
+        eventFrame:RegisterEvent("UPDATE_UI_WIDGET")
+    end
 
     eventFrame:SetScript("OnEvent", function(frame, event, ...)
         if event == "ADDON_LOADED" and select(1, ...) == "zSkyridingBar" then
@@ -407,6 +421,11 @@ function zSkyridingBar:OnInitialize()
         elseif event == "UNIT_POWER_UPDATE" then
             local unitTarget, powerType = select(1, ...), select(2, ...)
             zSkyridingBar:OnUnitPowerUpdate(unitTarget, powerType)
+        elseif event == "UPDATE_UI_WIDGET" then
+            if CompatCheck then
+                local widgetInfo = select(1, ...)
+                zSkyridingBar:UpdateVigorFromWidget(widgetInfo)
+            end
         end
     end)
 
@@ -416,14 +435,15 @@ function zSkyridingBar:OnInitialize()
     self.db.RegisterCallback(self, "OnProfileCopied", "RefreshConfig")
     self.db.RegisterCallback(self, "OnProfileReset", "RefreshConfig")
 end
-BuildInterface = 0
+
 function zSkyridingBar:OnPlayerLogin()
     -- Apply fonts after a short delay to ensure LibSharedMedia is ready
     C_Timer.After(2.5, function()
         self:UpdateFonts()
-        local v,b,d,i=GetBuildInfo()
-        BuildInterface = i
         zSkyridingBar.print("Detected interface version " .. BuildInterface)
+        if CompatCheck then
+            zSkyridingBar.print("Compatibility mode enabled")
+        end
     end)
     self:InitializeOptions()
 end
@@ -540,6 +560,12 @@ function zSkyridingBar:RefreshConfig()
     --self:UpdateFramePositions()
     self:UpdateAllFrameAppearance()
     self:UpdateFonts()
+    -- Update default vigor UI visibility
+    if CompatCheck then
+        if UIWidgetPowerBarContainerFrame and UIWidgetPowerBarContainerFrame:IsVisible() then
+            UIWidgetPowerBarContainerFrame:Hide()
+        end
+    end
 end
 
 function zSkyridingBar:CreateAllFrames()
@@ -549,6 +575,11 @@ function zSkyridingBar:CreateAllFrames()
     self:CreateChargesBarFrame()
     self:CreateSpeedAbilityFrame()
     self:CreateSecondWindFrame()
+    if CompatCheck then
+        if UIWidgetPowerBarContainerFrame and UIWidgetPowerBarContainerFrame:IsVisible() then
+            UIWidgetPowerBarContainerFrame:Hide()
+        end
+    end
 end
 
 function zSkyridingBar:CreateSpeedBarFrame()
@@ -1021,6 +1052,17 @@ function zSkyridingBar:OnZoneChanged()
     self:ScheduleTimer(function() self:CheckSkyridingAvailability() end, 0.1)
 end
 
+if CompatCheck then
+    function zSkyridingBar:OnUpdateUIWidget(widgetInfo)
+        -- Handle UI widget updates for vigor bars
+        if widgetInfo and widgetInfo.widgetSetID == 283 then
+            -- Debug: print("Vigor widget update received:", widgetInfo.widgetID)
+            zSkyridingBar.print("Vigor widget update received: " .. widgetInfo.widgetID)
+            self:UpdateVigorFromWidget(widgetInfo)
+        end
+    end
+end
+
 function zSkyridingBar:OnUnitAura(unitTarget)
     -- Handled by UpdateTracking
 end
@@ -1073,6 +1115,11 @@ function zSkyridingBar:StartTracking()
         self:UpdateStaticChargeAndWhirlingSurge()
         self:UpdateSecondWind()
     end
+    if CompatCheck then
+        if UIWidgetPowerBarContainerFrame and UIWidgetPowerBarContainerFrame:IsVisible() then
+            UIWidgetPowerBarContainerFrame:Hide()
+        end
+    end
 end
 
 function zSkyridingBar:StopTracking()
@@ -1088,6 +1135,9 @@ function zSkyridingBar:StopTracking()
     if chargesBarFrame then chargesBarFrame:Hide() end
     if speedAbilityFrame then speedAbilityFrame:Hide() end
     if secondWindFrame then secondWindFrame:Hide() end
+    if CompatCheck then
+        if UIWidgetPowerBarContainerFrame then UIWidgetPowerBarContainerFrame:Show() end
+    end
 end
 
 function zSkyridingBar:UpdateTracking()
@@ -1099,6 +1149,12 @@ function zSkyridingBar:UpdateTracking()
     end
 
     if not speedBar then return end
+
+    if CompatCheck then
+        if UIWidgetPowerBarContainerFrame and UIWidgetPowerBarContainerFrame:IsVisible() then
+            UIWidgetPowerBarContainerFrame:Hide()
+        end
+    end
 
     local mapID = C_Map.GetBestMapForUnit("player")
     isSlowSkyriding = not FAST_FLYING_ZONES[select(8, GetInstanceInfo())]
@@ -1174,8 +1230,64 @@ function zSkyridingBar:UpdatespeedBarNormalColors(currentSpeed)
     end
 end
 
+if CompatCheck then
+    function zSkyridingBar:UpdateVigorFromWidget(widgetInfo)
+        -- Use UI widget system like WeakAuras does
+        if not widgetInfo or not widgetInfo.widgetID then
+            return
+        end
+
+        local widgetData = C_UIWidgetManager.GetFillUpFramesWidgetVisualizationInfo(widgetInfo.widgetID)
+
+        if not widgetData or not chargeFrame or not chargeFrame.bars then
+            return
+        end
+
+        -- Hide all bars first
+        for i = 1, 6 do
+            local bar = chargeFrame.bars[i]
+            if bar then
+                bar:Hide()
+            end
+        end
+
+        -- Update bars based on widget data
+        for i = 1, math.min(widgetData.numTotalFrames, 6) do
+            local bar = chargeFrame.bars[i]
+            if bar then
+                bar:Show()
+
+                -- Set up the bar range (0-100 for percentage-like display)
+                bar:SetMinMaxValues(0, 100)
+
+                if widgetData.numFullFrames >= i then
+                    -- Full charge - instantly fill to 100%
+                    updateChargeBarColor(bar, true, false)
+                    smoothSetValue(bar, 100)
+                elseif widgetData.numFullFrames + 1 == i then
+                    -- Currently regenerating charge - show smooth progress
+                    local progress = 0
+                    if widgetData.fillMax > widgetData.fillMin then
+                        progress = ((widgetData.fillValue - widgetData.fillMin) / (widgetData.fillMax - widgetData.fillMin)) * 100
+                    end
+                    updateChargeBarColor(bar, false, true)
+                    smoothSetValue(bar, math.max(0, math.min(100, progress)))
+                else
+                    -- Empty charge
+                    updateChargeBarColor(bar, false, false)
+                    smoothSetValue(bar, 0)
+                end
+            end
+        end
+    end
+end
+
 function zSkyridingBar:UpdateChargeBars()
     if not chargeFrame or not chargeFrame.bars or InCombatLockdown() then return end
+
+    if CompatCheck then
+        return
+    end
 
     local spellChargeInfo = C_Spell.GetSpellCharges(SURGE_FORWARD_SPELL_ID)
 
