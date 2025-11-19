@@ -227,6 +227,9 @@ local moveMode = false
 local movingFrame = nil
 local secondWindStartTime = 0
 local whirlingSurgeStartTime = 0
+local speedBarAnimSpeed = 5
+local chargeBarAnimSpeed = 10
+local vigorAnimSpeed = 5
 
 -- Localized functions
 local GetTime = GetTime
@@ -299,50 +302,47 @@ local function updateChargeBarColor(bar, isFull, isRecharging)
     bar:SetStatusBarColor(unpack(color))
 end
 
--- Helper: Smooth bar animation
-local function smoothSetValue(bar, targetValue)
-    if not bar then return end
-
-    bar.targetValue = targetValue
-
+local function AnimateStatusBar(bar, targetValue, smoothFactor)
+    if not bar or not hasSkyriding then return end
+    
+    -- Initialize current value if needed
     if not bar.currentValue then
-        bar.currentValue = targetValue
-        bar:SetValue(targetValue)
-        return
+        bar.currentValue = bar:GetValue()
     end
-
-    if bar.smoothTimer then
-        zSkyridingBar:CancelTimer(bar.smoothTimer)
+    
+    bar.targetValue = targetValue
+    
+    if not bar.animating then
+        bar.animating = true
+        
+        bar:SetScript("OnUpdate", function(self, elapsed)
+            if not self.targetValue then
+                self:SetScript("OnUpdate", nil)
+                self.animating = false
+                return
+            end
+            
+            -- Exponential smoothing (lerp)
+            -- Lower smoothFactor = smoother but slower
+            -- Higher smoothFactor = faster but more jittery
+            local factor = math.min(1, (smoothFactor or 8) * elapsed)
+            local diff = self.targetValue - self.currentValue
+            
+            if math.abs(diff) < 0.01 then
+                self.currentValue = self.targetValue
+                self:SetValue(self.targetValue)
+                self:SetScript("OnUpdate", nil)
+                self.animating = false
+                return
+            end
+            
+            self.currentValue = self.currentValue + (diff * factor)
+            self:SetValue(self.currentValue)
+        end)
+    else
+        -- Animation already running, just update target
+        -- The OnUpdate script will smoothly transition to new target
     end
-
-    if math.abs(bar.currentValue - targetValue) < 1 then
-        bar.currentValue = targetValue
-        bar:SetValue(targetValue)
-        return
-    end
-
-    local startValue = bar.currentValue
-    local startTime = GetTime()
-    local duration = 0.05
-
-    if CompatCheck then
-        local duration = 0.2
-    end
-
-    bar.smoothTimer = zSkyridingBar:ScheduleRepeatingTimer(function()
-        local elapsed = GetTime() - startTime
-        local progress = math.min(elapsed / duration, 1.0)
-        local easedProgress = progress * progress * (3.0 - 2.0 * progress)
-
-        bar.currentValue = startValue + (targetValue - startValue) * easedProgress
-        bar:SetValue(bar.currentValue)
-
-        if progress >= 1.0 then
-            zSkyridingBar:CancelTimer(bar.smoothTimer)
-            bar.smoothTimer = nil
-            bar.currentValue = targetValue
-        end
-    end, 1 / 60)
 end
 
 -- Helper: Create moveable frame header
@@ -1213,7 +1213,7 @@ function zSkyridingBar:UpdateTracking()
         adjustedSpeed = adjustedSpeed / SLOW_SKYRIDING_RATIO
     end
 
-    speedBar:SetValue(math.min(100, math.max(20, adjustedSpeed)))
+    AnimateStatusBar(speedBar, math.min(100, math.max(20, adjustedSpeed)), speedBarAnimSpeed)
 
     if speedText and self.db.profile.speedShow then
         local speedTextFormat, speedTextFactor = "", 1
@@ -1289,7 +1289,7 @@ if CompatCheck then
                 if widgetData.numFullFrames >= i then
                     -- Full charge - instantly fill to 100%
                     updateChargeBarColor(bar, true, false)
-                    smoothSetValue(bar, 100)
+                    AnimateStatusBar(bar, 100, vigorAnimSpeed)
                 elseif widgetData.numFullFrames + 1 == i then
                     -- Currently regenerating charge - show smooth progress
                     local progress = 0
@@ -1297,11 +1297,11 @@ if CompatCheck then
                         progress = ((widgetData.fillValue - widgetData.fillMin) / (widgetData.fillMax - widgetData.fillMin)) * 100
                     end
                     updateChargeBarColor(bar, false, true)
-                    smoothSetValue(bar, math.max(0, math.min(100, progress)))
+                    AnimateStatusBar(bar, math.max(0, math.min(100, progress)), vigorAnimSpeed)
                 else
                     -- Empty charge
                     updateChargeBarColor(bar, false, false)
-                    smoothSetValue(bar, 0)
+                    AnimateStatusBar(bar, 0, vigorAnimSpeed)
                 end
             end
         end
@@ -1337,22 +1337,31 @@ function zSkyridingBar:UpdateChargeBars()
 
                 if i <= charges then
                     updateChargeBarColor(bar, true, false)
-                    bar:SetValue(100)
-                    bar.currentValue = 100
-                    bar.targetValue = 100
+                    if bar.targetValue ~= 100 then
+                        bar:SetValue(100)
+                        bar.currentValue = 100
+                        bar.targetValue = 100
+                    end
                     bar:GetStatusBarTexture():SetAlpha(1)
                 elseif i == charges + 1 and start and duration and duration > 0 then
                     local elapsed = GetTime() - start
                     local progress = math.min(100, (elapsed / duration) * 100)
                     updateChargeBarColor(bar, false, true)
-                    smoothSetValue(bar, progress)
+                    -- Only animate if progress changed by more than 0.5%
+                    if not bar.lastProgress or math.abs(bar.lastProgress - progress) > 0.5 then
+                        AnimateStatusBar(bar, progress, chargeBarAnimSpeed)
+                        bar.lastProgress = progress
+                    end
                     bar:GetStatusBarTexture():SetAlpha(1)
                 else
                     updateChargeBarColor(bar, false, false)
-                    bar:SetValue(0)
-                    bar.currentValue = 0
-                    bar.targetValue = 0
+                    if bar.targetValue ~= 0 then
+                        bar:SetValue(0)
+                        bar.currentValue = 0
+                        bar.targetValue = 0
+                    end
                     bar:GetStatusBarTexture():SetAlpha(0)
+                    bar.lastProgress = nil
                 end
             end
         end
@@ -1361,6 +1370,7 @@ function zSkyridingBar:UpdateChargeBars()
             local bar = chargeFrame.bars[i]
             if bar then
                 bar:Hide()
+                bar.lastProgress = nil
             end
         end
     end
