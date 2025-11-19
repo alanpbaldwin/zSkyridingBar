@@ -201,6 +201,7 @@ local active = false
 local updateHandle = nil
 local ascentStart = 0
 local isSlowSkyriding = true
+local hasSkyriding = false
 
 -- Frame references
 local speedBarFrame = nil
@@ -404,6 +405,7 @@ function zSkyridingBar:OnInitialize()
     eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     eventFrame:RegisterEvent("ZONE_CHANGED")
     eventFrame:RegisterEvent("UNIT_POWER_UPDATE")
+    eventFrame:RegisterEvent("PLAYER_CAN_GLIDE_CHANGED")
     if CompatCheck then
         eventFrame:RegisterEvent("UPDATE_UI_WIDGET")
     end
@@ -419,16 +421,26 @@ function zSkyridingBar:OnInitialize()
             zSkyridingBar:OnSpellcastSucceeded(event, ...)
         elseif event == "UNIT_AURA" then
             local unitTarget = select(1, ...)
+            if InCombatLockdown() then return end
             zSkyridingBar:OnUnitAura(unitTarget)
         elseif event == "ZONE_CHANGED_NEW_AREA" or event == "ZONE_CHANGED" then
             zSkyridingBar:OnZoneChanged()
         elseif event == "UNIT_POWER_UPDATE" then
             local unitTarget, powerType = select(1, ...), select(2, ...)
             zSkyridingBar:OnUnitPowerUpdate(unitTarget, powerType)
+        elseif event == "PLAYER_CAN_GLIDE_CHANGED" then
+            zSkyridingBar:CheckSkyridingAvailability()
+            local isGliding, isFlying, forwardSpeed = C_PlayerInfo.GetGlidingInfo()
+            if not isGliding and not isFlying then
+                hasSkyriding = false
+            else
+                hasSkyriding = true
+            end
         elseif event == "UPDATE_UI_WIDGET" then
             if CompatCheck then
                 local widgetInfo = select(1, ...)
                 zSkyridingBar:UpdateVigorFromWidget(widgetInfo)
+
             end
         end
     end)
@@ -587,6 +599,7 @@ function zSkyridingBar:CreateAllFrames()
 end
 
 function zSkyridingBar:CreateSpeedBarFrame()
+
     speedBarFrame = CreateFrame("Frame", "zSkyridingBarSpeedBarFrame", UIParent)
     speedBarFrame:SetSize(self.db.profile.speedBarWidth, self.db.profile.speedBarHeight)
     speedBarFrame:SetPoint("CENTER", UIParent, "CENTER", self.db.profile.speedBarX, self.db.profile.speedBarY)
@@ -1058,6 +1071,7 @@ end
 
 if CompatCheck then
     function zSkyridingBar:OnUpdateUIWidget(widgetInfo)
+
         -- Handle UI widget updates for vigor bars
         if widgetInfo and widgetInfo.widgetSetID == 283 then
             -- Debug: print("Vigor widget update received:", widgetInfo.widgetID)
@@ -1086,7 +1100,12 @@ function zSkyridingBar:OnSpellcastSucceeded(event, unitTarget, castGUID, spellId
 end
 
 function zSkyridingBar:CheckSkyridingAvailability()
-    local hasSkyriding = C_SpellBook.IsSpellInSpellBook(ASCENT_SPELL_ID)
+    local isGliding, isFlying, forwardSpeed = C_PlayerInfo.GetGlidingInfo()
+    if not isGliding and not isFlying then
+        hasSkyriding = false
+    else
+        hasSkyriding = true
+    end
 
     if hasSkyriding then
         isSlowSkyriding = not FAST_FLYING_ZONES[select(8, GetInstanceInfo())]
@@ -1145,6 +1164,7 @@ function zSkyridingBar:StopTracking()
 end
 
 function zSkyridingBar:UpdateTracking()
+
     if not active then
         self:CheckSkyridingAvailability()
         if not active then
@@ -1219,6 +1239,7 @@ function zSkyridingBar:UpdateTracking()
 end
 
 function zSkyridingBar:UpdatespeedBarNormalColors(currentSpeed)
+
     if not speedBar or InCombatLockdown() then return end
 
     local thrill = C_UnitAuras.GetPlayerAuraBySpellID(THRILL_BUFF_ID)
@@ -1236,6 +1257,7 @@ end
 
 if CompatCheck then
     function zSkyridingBar:UpdateVigorFromWidget(widgetInfo)
+
         -- Use UI widget system like WeakAuras does
         if not widgetInfo or not widgetInfo.widgetID then
             return
@@ -1345,6 +1367,7 @@ function zSkyridingBar:UpdateChargeBars()
 end
 
 function zSkyridingBar:UpdateStaticChargeAndWhirlingSurge()
+
     if InCombatLockdown() then return end
     if not speedAbilityFrame or InCombatLockdown() then return end
 
