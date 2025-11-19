@@ -69,7 +69,7 @@ local defaults = {
         speedBarX = 0,
         speedBarY = -167,
         chargesBarX = 0,
-        chargesBarY = -5,
+        chargesBarY = -15,
         speedAbilityX = -160,
         speedAbilityY = -176,
         secondWindX = 0,
@@ -81,10 +81,10 @@ local defaults = {
         speedBarWidth = 256,
         speedBarHeight = 18,
         speedBarTexture = getDefaultTexture(),
-        speedBarColor = { 0.749, 0.439, 0.173, 1 },
-        speedBarThrillColor = { 0.2, 0.37, 0.8, 1 },
-        speedBarBoostColor = { 0.314, 0.537, 0.3, 1 },
         speedBarBackgroundColor = { 0, 0, 0, 0.4 },
+        speedBarNormalColor = { 0.749, 0.439, 0.173, 1 },
+        speedBarThrillColor = { 0.482, 0.667, 1, 1 },
+        speedBarBoostColor = { 0.314, 0.537, 0.157, 1 },
 
         -- Charge bar settings
         chargeBarWidth = 256,
@@ -92,11 +92,10 @@ local defaults = {
         chargeBarSpacing = 2,
         speedIndicatorHeight = 18,
         chargeBarTexture = getDefaultTexture(),
-        chargeBarFullColor = { 0.2, 0.37, 0.8, 1 },
-        chargeBarFastRechargeColor = { 0.314, 0.537, 0.3, 1 },
-        chargeBarSlowRechargeColor = { 0.53, 0.29, 0.2, 1 },
-        chargeBarEmptyColor = { 0.15, 0.15, 0.15, 0.8 },
         chargeBarBackgroundColor = { 0, 0, 0, 0.4 },
+        chargeBarNormalRechargeColor = { 0.53, 0.29, 0.2, 1 },
+        chargeBarFastRechargeColor = { 0.25, 0.9, 0.6, 1 },
+        chargeBarFullColor = { 0.2, 0.5, 0.8, 1 },
 
         -- Speed indicator settings
         showSpeedIndicator = true,
@@ -106,22 +105,19 @@ local defaults = {
         secondWindBarWidth = 100,
         secondWindBarHeight = 18,
         secondWindBarTexture = getDefaultTexture(),
-        secondWindFullColor = { 0.2, 0.37, 0.8, 1 },
-        secondWindRechargeColor = { 0.53, 0.29, 0.2, 1 },
-        secondWindEmptyColor = { 0.15, 0.15, 0.15, 0.8 },
-        secondWindBackgroundColor = { 0, 0, 0, 0.4 },
-        secondWindNoChargeColor = { 0.15, 0.15, 0.15, 0.8 }, -- background for 0 charges
-        secondWindOneChargeColor = { 0.53, 0.29, 0.2, 1 },   -- background for 1 charge, fill for charging to 1
-        secondWindTwoChargeColor = { 0.314, 0.537, 0.3, 1 }, -- background for 2 charges, fill for charging to 2
-        secondWindThreeChargeColor = { 0.2, 0.37, 0.8, 1 },  -- background for 3 charges, fill for charging to 3
+        secondWindNoChargeColor = { 0, 0, 0, 0.4 },        -- background for 0 charges
+        secondWindOneChargeColor = { 0.53, 0.29, 0.2, 1 }, -- background for 1 charge, fill for charging to 1
+        secondWindTwoChargeColor = { 0.25, 0.9, 0.6, 1 },  -- background for 2 charges, fill for charging to 2
+        secondWindThreeChargeColor = { 0.2, 0.5, 0.8, 1 }, -- background for 3 charges, fill for charging to 3
         -- Whirling Surge settings
         whirlingSurgeSize = 40,
         whirlingSurgeTexture = getDefaultTexture(),
 
         -- Font settings
-        fontSize = 12,
-        fontFace = "Fonts\\FRIZQT__.TTF",
-        fontFlags = "OUTLINE",
+        fontSize = 13,
+        fontFace = "Homespun",
+        fontFlag = "OUTLINE",
+        fontColor = { 1, 1, 1, 1 },
 
         -- Sound settings
         chargeRefreshSound = true,
@@ -228,6 +224,19 @@ local function playChargeSound(soundId)
     PlaySound(soundId, "Master")
 end
 
+-- Helper: Preview charge sound (called from options)
+function zSkyridingBar:PreviewChargeSound()
+    if self.db.profile.chargeRefreshSound then
+        playChargeSound(self.db.profile.chargeRefreshSoundId)
+    end
+end
+
+-- Helper: Get font path from LibSharedMedia font name
+local function getFontPath(fontName)
+    local LSM = LibStub("LibSharedMedia-3.0")
+    return LSM:Fetch("font", fontName) or "Fonts\\FRIZQT__.TTF"
+end
+
 local SNAP_THRESHOLD = 10 -- pixels
 
 local function snapToNearbyFrames(draggedFrame)
@@ -265,10 +274,10 @@ local function updateChargeBarColor(bar, isFull, isRecharging)
         if thrill then
             color = zSkyridingBar.db.profile.chargeBarFastRechargeColor
         else
-            color = zSkyridingBar.db.profile.chargeBarSlowRechargeColor
+            color = zSkyridingBar.db.profile.chargeBarNormalRechargeColor
         end
     else
-        color = zSkyridingBar.db.profile.chargeBarEmptyColor
+        color = zSkyridingBar.db.profile.chargeBarNormalRechargeColor
     end
 
     bar:SetStatusBarColor(unpack(color))
@@ -405,6 +414,10 @@ function zSkyridingBar:OnInitialize()
 end
 
 function zSkyridingBar:OnPlayerLogin()
+    -- Apply fonts after a short delay to ensure LibSharedMedia is ready
+    C_Timer.After(2.5, function()
+        self:UpdateFonts()
+    end)
     self:InitializeOptions()
 end
 
@@ -473,7 +486,7 @@ function zSkyridingBar:UpdateFramePositions()
         chargesBarFrame:ClearAllPoints()
         chargesBarFrame:SetSize(self.db.profile.chargeBarWidth, self.db.profile.chargeBarHeight)
         chargesBarFrame:SetPoint("TOP", speedBarFrame, "BOTTOM", self.db.profile.chargesBarX, self.db.profile
-        .chargesBarY)
+            .chargesBarY)
         chargesBarFrame:SetScale(self.db.profile.frameScale)
         chargesBarFrame:SetFrameStrata(self.db.profile.frameStrata)
     end
@@ -494,11 +507,32 @@ function zSkyridingBar:UpdateFramePositions()
     end
 end
 
+function zSkyridingBar:UpdateFonts()
+    if speedText then
+        speedText:SetFont(getFontPath(self.db.profile.fontFace), self.db.profile.fontSize, self.db.profile.fontFlag)
+        speedText:SetTextColor(unpack(self.db.profile.fontColor))
+    end
+    if angleText then
+        angleText:SetFont(getFontPath(self.db.profile.fontFace), self.db.profile.fontSize, self.db.profile.fontFlag)
+        angleText:SetTextColor(unpack(self.db.profile.fontColor))
+    end
+    if staticChargeText then
+        staticChargeText:SetFont(getFontPath(self.db.profile.fontFace), 14, self.db.profile.fontFlag)
+        staticChargeText:SetTextColor(unpack(self.db.profile.fontColor))
+    end
+    if secondWindText then
+        secondWindText:SetFont(getFontPath(self.db.profile.fontFace), self.db.profile.fontSize, self.db.profile
+            .fontFlag)
+        secondWindText:SetTextColor(unpack(self.db.profile.fontColor))
+    end
+end
+
 function zSkyridingBar:RefreshConfig()
     applyTheme(self.db.profile.theme)
     -- Update frame positions and appearance without destroying
     --self:UpdateFramePositions()
     self:UpdateAllFrameAppearance()
+    self:UpdateFonts()
 end
 
 function zSkyridingBar:CreateAllFrames()
@@ -526,7 +560,7 @@ function zSkyridingBar:CreateSpeedBarFrame()
     local speedTexture = LibStub("LibSharedMedia-3.0"):Fetch("statusbar", self.db.profile.speedBarTexture) or
         "Interface\\TargetingFrame\\UI-StatusBar"
     speedBar:SetStatusBarTexture(speedTexture)
-    speedBar:SetStatusBarColor(unpack(self.db.profile.speedBarColor))
+    speedBar:SetStatusBarColor(unpack(self.db.profile.speedBarNormalColor))
     speedBar:SetMinMaxValues(20, 100)
     speedBar:SetValue(0)
 
@@ -577,16 +611,16 @@ function zSkyridingBar:CreateSpeedBarFrame()
 
     -- Speed text
     speedText = speedBar:CreateFontString(nil, "OVERLAY")
-    speedText:SetFont(self.db.profile.fontFace, self.db.profile.fontSize, self.db.profile.fontFlags)
+    speedText:SetFont(getFontPath(self.db.profile.fontFace), self.db.profile.fontSize, self.db.profile.fontFlag)
     speedText:SetPoint("LEFT", speedBar, "LEFT", 5, 0)
-    speedText:SetTextColor(1, 1, 1, 1)
+    speedText:SetTextColor(unpack(self.db.profile.fontColor))
     speedText:SetText("")
 
     -- Angle text
     angleText = speedBar:CreateFontString(nil, "OVERLAY")
-    angleText:SetFont(self.db.profile.fontFace, self.db.profile.fontSize, self.db.profile.fontFlags)
+    angleText:SetFont(getFontPath(self.db.profile.fontFace), self.db.profile.fontSize, self.db.profile.fontFlag)
     angleText:SetPoint("RIGHT", speedBar, "RIGHT", -5, 0)
-    angleText:SetTextColor(1, 1, 1, 1)
+    angleText:SetTextColor(unpack(self.db.profile.fontColor))
     angleText:SetText("")
 
     -- Speed indicator
@@ -746,7 +780,7 @@ function zSkyridingBar:CreateSpeedAbilityFrame()
 
     -- Stack count text
     staticChargeText = speedAbilityFrame:CreateFontString(nil, "OVERLAY")
-    staticChargeText:SetFont(self.db.profile.fontFace, 14, self.db.profile.fontFlags)
+    staticChargeText:SetFont(getFontPath(self.db.profile.fontFace), 14, self.db.profile.fontFlag)
     staticChargeText:SetPoint("BOTTOM", staticChargeIcon, "BOTTOM", 0, -5)
     staticChargeText:SetTextColor(1, 1, 1, 1)
     staticChargeText:SetText("")
@@ -809,9 +843,9 @@ function zSkyridingBar:CreateSecondWindFrame()
 
     -- Charge count text (centered)
     secondWindText = secondWindBar:CreateFontString(nil, "OVERLAY")
-    secondWindText:SetFont(self.db.profile.fontFace, self.db.profile.fontSize, self.db.profile.fontFlags)
+    secondWindText:SetFont(getFontPath(self.db.profile.fontFace), self.db.profile.fontSize, self.db.profile.fontFlag)
     secondWindText:SetPoint("CENTER", secondWindBar, "CENTER", 0, 0)
-    secondWindText:SetTextColor(1, 1, 1, 1)
+    secondWindText:SetTextColor(unpack(self.db.profile.fontColor))
     secondWindText:SetText("0/3")
 
     secondWindBar.currentValue = 0
@@ -835,7 +869,7 @@ function zSkyridingBar:UpdateSpeedBarAppearance()
     local speedTexture = LibStub("LibSharedMedia-3.0"):Fetch("statusbar", self.db.profile.speedBarTexture) or
         "Interface\\TargetingFrame\\UI-StatusBar"
     speedBar:SetStatusBarTexture(speedTexture)
-    speedBar:SetStatusBarColor(unpack(self.db.profile.speedBarColor))
+    speedBar:SetStatusBarColor(unpack(self.db.profile.speedBarNormalColor))
 
     if speedBar.bg then
         speedBar.bg:SetTexture(speedTexture)
@@ -965,6 +999,10 @@ end
 
 -- Event handlers
 function zSkyridingBar:OnAddonLoaded()
+    -- Register custom font with LibSharedMedia
+    local LSM = LibStub("LibSharedMedia-3.0")
+    LSM:Register("font", "Homespun", "Interface\\Addons\\zSkyridingBar\\Assets\\Fonts\\homespun.ttf")
+
     self:CheckSkyridingAvailability()
 end
 
@@ -1103,7 +1141,7 @@ function zSkyridingBar:UpdateTracking()
         speedText:SetText(speedDisplay)
     end
 
-    self:UpdateSpeedBarColors(forwardSpeed)
+    self:UpdatespeedBarNormalColors(forwardSpeed)
 
     if not InCombatLockdown() then
         self:UpdateChargeBars()
@@ -1113,7 +1151,7 @@ function zSkyridingBar:UpdateTracking()
     end
 end
 
-function zSkyridingBar:UpdateSpeedBarColors(currentSpeed)
+function zSkyridingBar:UpdatespeedBarNormalColors(currentSpeed)
     if not speedBar or InCombatLockdown() then return end
 
     local thrill = C_UnitAuras.GetPlayerAuraBySpellID(THRILL_BUFF_ID)
@@ -1125,7 +1163,7 @@ function zSkyridingBar:UpdateSpeedBarColors(currentSpeed)
     elseif thrill then
         speedBar:SetStatusBarColor(unpack(self.db.profile.speedBarThrillColor))
     else
-        speedBar:SetStatusBarColor(unpack(self.db.profile.speedBarColor))
+        speedBar:SetStatusBarColor(unpack(self.db.profile.speedBarNormalColor))
     end
 end
 
@@ -1253,8 +1291,10 @@ function zSkyridingBar:UpdateStaticChargeAndWhirlingSurge()
                 -- Trigger shine when cooldown just ends
                 if fillHeight and fillHeight <= 1 and not speedAbilityFrame._shineActive then
                     speedAbilityFrame._shineActive = true
-                    if speedAbilityFrame and speedAbilityFrame.whirlingSurgeShine then speedAbilityFrame
-                            .whirlingSurgeShine:SetAlpha(1) end
+                    if speedAbilityFrame and speedAbilityFrame.whirlingSurgeShine then
+                        speedAbilityFrame
+                            .whirlingSurgeShine:SetAlpha(1)
+                    end
                     if staticChargeIcon then staticChargeIcon:SetAlpha(1) end
                     if speedAbilityFrame and speedAbilityFrame.whirlingSurgeShineAnimGroup then
                         speedAbilityFrame.whirlingSurgeShineAnimGroup:Play()
@@ -1348,8 +1388,10 @@ function zSkyridingBar:UpdateStaticChargeAndWhirlingSurge()
             speedAbilityFrame.whirlingSurgeReverseFill:Show()
             if fillHeight and fillHeight <= 1 and not (speedAbilityFrame and speedAbilityFrame._shineActive) then
                 if speedAbilityFrame then speedAbilityFrame._shineActive = true end
-                if speedAbilityFrame and speedAbilityFrame.whirlingSurgeShine then speedAbilityFrame.whirlingSurgeShine
-                        :SetAlpha(1) end
+                if speedAbilityFrame and speedAbilityFrame.whirlingSurgeShine then
+                    speedAbilityFrame.whirlingSurgeShine
+                        :SetAlpha(1)
+                end
                 if staticChargeIcon then staticChargeIcon:SetAlpha(1) end
                 if speedAbilityFrame and speedAbilityFrame.whirlingSurgeShineAnimGroup then
                     speedAbilityFrame.whirlingSurgeShineAnimGroup:Play()
@@ -1438,8 +1480,10 @@ function zSkyridingBar:UpdateStaticChargeAndWhirlingSurge()
             speedAbilityFrame.whirlingSurgeReverseFill:Show()
             if fillHeight and fillHeight <= 1 and not (speedAbilityFrame and speedAbilityFrame._shineActive) then
                 if speedAbilityFrame then speedAbilityFrame._shineActive = true end
-                if speedAbilityFrame and speedAbilityFrame.whirlingSurgeShine then speedAbilityFrame.whirlingSurgeShine
-                        :SetAlpha(1) end
+                if speedAbilityFrame and speedAbilityFrame.whirlingSurgeShine then
+                    speedAbilityFrame.whirlingSurgeShine
+                        :SetAlpha(1)
+                end
                 if whirlingSurgeIcon then whirlingSurgeIcon:SetAlpha(1) end
                 if speedAbilityFrame and speedAbilityFrame.whirlingSurgeShineAnimGroup then
                     speedAbilityFrame.whirlingSurgeShineAnimGroup:Play()

@@ -96,27 +96,6 @@ local options = {
                         zSkyridingBar:RefreshConfig()
                     end,
                 },
-                spacerTheme = {
-                    order = nextOrder(),
-                    type = "description",
-                    name = "",
-                    width = "full",
-                },
-
-                showRechargeIndicator = {
-                    order = nextOrder(),
-                    type = "toggle",
-                    name = L["Recharge Indicator"],
-                    desc = L["Show indicator line at 60% on speed bar"],
-                    get = function(info)
-                        return zSkyridingBar.db.profile.showSpeedIndicator
-                    end,
-                    set = function(info, value)
-                        zSkyridingBar.db.profile.showSpeedIndicator = value
-                        zSkyridingBar:RefreshConfig()
-                    end,
-                },
-
                 chargeRefreshSound = {
                     order = nextOrder(),
                     type = "select",
@@ -160,6 +139,27 @@ local options = {
                     end,
                 },
 
+                spacerTheme = {
+                    order = nextOrder(),
+                    type = "description",
+                    name = "",
+                    width = "full",
+                },
+
+                showRechargeIndicator = {
+                    order = nextOrder(),
+                    type = "toggle",
+                    name = L["Recharge Indicator"],
+                    desc = L["Show indicator line at 60% on speed bar"],
+                    get = function(info)
+                        return zSkyridingBar.db.profile.showSpeedIndicator
+                    end,
+                    set = function(info, value)
+                        zSkyridingBar.db.profile.showSpeedIndicator = value
+                        zSkyridingBar:RefreshConfig()
+                    end,
+                },
+
                 spacer1 = {
                     order = nextOrder(),
                     type = "description",
@@ -195,6 +195,88 @@ local options = {
                     end,
                     set = function(info, value)
                         zSkyridingBar.db.profile.speedUnits = value
+                        zSkyridingBar:RefreshConfig()
+                    end,
+                },
+
+                fontSpacer1 = {
+                    order = nextOrder(),
+                    type = "description",
+                    name = "",
+                    width = "full",
+                },
+                fontSize = {
+                    order = nextOrder(),
+                    type = "range",
+                    name = L["Font Size"],
+                    desc = L["Set the font size"],
+                    min = 8,
+                    max = 32,
+                    step = 1,
+                    get = function(info)
+                        return zSkyridingBar.db.profile.fontSize or 12
+                    end,
+                    set = function(info, value)
+                        zSkyridingBar.db.profile.fontSize = value
+                        zSkyridingBar:RefreshConfig()
+                    end,
+                },
+                fontColor = {
+                    order = nextOrder(),
+                    type = "color",
+                    name = L["Font Color"],
+                    desc = L["Set the font color"],
+                    hasAlpha = true,
+                    get = function(info)
+                        local color = zSkyridingBar.db.profile.fontColor
+                        if not color then
+                            local defaults = zSkyridingBar.db.defaults.profile.fontColor
+                            return defaults[1], defaults[2], defaults[3], defaults[4]
+                        end
+                        return color[1], color[2], color[3], color[4]
+                    end,
+                    set = function(info, r, g, b, a)
+                        zSkyridingBar.db.profile.fontColor = { r, g, b, a }
+                        zSkyridingBar:RefreshConfig()
+                    end,
+                },
+                fontSpacer2 = {
+                    order = nextOrder(),
+                    type = "description",
+                    name = "",
+                    width = "full",
+                },
+                fontFace = {
+                    order = nextOrder(),
+                    type = "select",
+                    dialogControl = "LSM30_Font",
+                    name = L["Font Face"],
+                    desc = L["Set the font face"],
+                    values = LibStub("LibSharedMedia-3.0"):HashTable("font"),
+                    get = function(info)
+                        return zSkyridingBar.db.profile.fontFace or "Homespun"
+                    end,
+                    set = function(info, value)
+                        zSkyridingBar.db.profile.fontFace = value
+                        zSkyridingBar:RefreshConfig()
+                    end,
+                },
+                fontFlag = {
+                    order = nextOrder(),
+                    type = "select",
+                    name = L["Font Flags"],
+                    desc = L["Set the font flags"],
+                    values = {
+                        [""] = L["None"],
+                        ["OUTLINE"] = L["Outline"],
+                        ["THICKOUTLINE"] = L["Thick Outline"],
+                        ["MONOCHROME"] = L["Monochrome"],
+                    },
+                    get = function(info)
+                        return zSkyridingBar.db.profile.fontFlag
+                    end,
+                    set = function(info, value)
+                        zSkyridingBar.db.profile.fontFlag = value
                         zSkyridingBar:RefreshConfig()
                     end,
                 },
@@ -252,8 +334,8 @@ local options = {
                     end,
                     set = function(info, value)
                         zSkyridingBar.db.profile.frameScale = value
-                        zSkyridingBar:UpdateFramePositions()
                         zSkyridingBar:RefreshConfig()
+                        zSkyridingBar:UpdateFramePositions()
                     end,
                     isPercent = true,
                 },
@@ -279,8 +361,9 @@ local options = {
                         zSkyridingBar.db.profile.speedBarHeight = defaults.speedBarHeight
                         zSkyridingBar.db.profile.chargeBarWidth = defaults.chargeBarWidth
                         zSkyridingBar.db.profile.chargeBarHeight = defaults.chargeBarHeight
-                        zSkyridingBar:UpdateFramePositions()
                         zSkyridingBar:RefreshConfig()
+                        zSkyridingBar:UpdateFramePositions()
+                        zSkyridingBar:UpdateFonts()
                         zSkyridingBar:Print(L["Reset position and size to defaults."])
                     end,
                 },
@@ -340,45 +423,17 @@ local options = {
                     hasAlpha = true,
                     get = function(info)
                         local color = zSkyridingBar.db.profile.speedBarBackgroundColor
-                        if not color then 
+                        if not color then
                             local defaults = zSkyridingBar.db.defaults.profile.speedBarBackgroundColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
                         return color[1], color[2], color[3], color[4]
                     end,
                     set = function(info, r, g, b, a)
-                        zSkyridingBar.db.profile.speedBarBackgroundColor = {r, g, b, a}
+                        zSkyridingBar.db.profile.speedBarBackgroundColor = { r, g, b, a }
                         zSkyridingBar:RefreshConfig()
                     end,
                 },
-
-                chargeBarBackgroundColor = {
-                    order = nextOrder(),
-                    type = "color",
-                    name = L["Charge Bar Background Color"],
-                    desc = L["Background color for the charge bars"],
-                    hasAlpha = true,
-                    get = function(info)
-                        local color = zSkyridingBar.db.profile.chargeBarBackgroundColor
-                        if not color then 
-                            local defaults = zSkyridingBar.db.defaults.profile.chargeBarBackgroundColor
-                            return defaults[1], defaults[2], defaults[3], defaults[4]
-                        end
-                        return color[1], color[2], color[3], color[4]
-                    end,
-                    set = function(info, r, g, b, a)
-                        zSkyridingBar.db.profile.chargeBarBackgroundColor = {r, g, b, a}
-                        zSkyridingBar:RefreshConfig()
-                    end,
-                },
-
-                spacer_background = {
-                    order = nextOrder(),
-                    type = "description",
-                    name = "",
-                    width = "full",
-                },
-
                 defaultSpeedColor = {
                     order = nextOrder(),
                     type = "color",
@@ -386,15 +441,15 @@ local options = {
                     desc = L["Color for normal speed"],
                     hasAlpha = true,
                     get = function(info)
-                        local color = zSkyridingBar.db.profile.speedBarColor
-                        if not color then 
-                            local defaults = zSkyridingBar.db.defaults.profile.speedBarColor
+                        local color = zSkyridingBar.db.profile.speedBarNormalColor
+                        if not color then
+                            local defaults = zSkyridingBar.db.defaults.profile.speedBarNormalColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
                         return color[1], color[2], color[3], color[4]
                     end,
                     set = function(info, r, g, b, a)
-                        zSkyridingBar.db.profile.speedBarColor = { r, g, b, a }
+                        zSkyridingBar.db.profile.speedBarNormalColor = { r, g, b, a }
                         zSkyridingBar:RefreshConfig()
                     end,
                 },
@@ -412,7 +467,7 @@ local options = {
                     hasAlpha = true,
                     get = function(info)
                         local color = zSkyridingBar.db.profile.speedBarThrillColor
-                        if not color then 
+                        if not color then
                             local defaults = zSkyridingBar.db.defaults.profile.speedBarThrillColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
@@ -432,7 +487,7 @@ local options = {
                     hasAlpha = true,
                     get = function(info)
                         local color = zSkyridingBar.db.profile.speedBarBoostColor
-                        if not color then 
+                        if not color then
                             local defaults = zSkyridingBar.db.defaults.profile.speedBarBoostColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
@@ -443,7 +498,7 @@ local options = {
                         zSkyridingBar:RefreshConfig()
                     end,
                 },
-                
+
                 spacer2 = {
                     order = nextOrder(),
                     type = "description",
@@ -458,7 +513,7 @@ local options = {
                     hasAlpha = true,
                     get = function(info)
                         local color = zSkyridingBar.db.profile.speedIndicatorColor
-                        if not color then 
+                        if not color then
                             local defaults = zSkyridingBar.db.defaults.profile.speedIndicatorColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
@@ -474,22 +529,42 @@ local options = {
                     type = "description",
                     name = "",
                 },
-                baseChargeColor = {
+                chargeBarBackgroundColor = {
                     order = nextOrder(),
                     type = "color",
-                    name = L["Base Charge Color"],
-                    desc = L["Color for base charge"],
+                    name = L["Charge Bar Background Color"],
+                    desc = L["Background color for the charge bars"],
                     hasAlpha = true,
                     get = function(info)
-                        local color = zSkyridingBar.db.profile.chargeBarSlowRechargeColor
-                        if not color then 
-                            local defaults = zSkyridingBar.db.defaults.profile.chargeBarSlowRechargeColor
+                        local color = zSkyridingBar.db.profile.chargeBarBackgroundColor
+                        if not color then
+                            local defaults = zSkyridingBar.db.defaults.profile.chargeBarBackgroundColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
                         return color[1], color[2], color[3], color[4]
                     end,
                     set = function(info, r, g, b, a)
-                        zSkyridingBar.db.profile.chargeBarSlowRechargeColor = { r, g, b, a }
+                        zSkyridingBar.db.profile.chargeBarBackgroundColor = { r, g, b, a }
+                        zSkyridingBar:RefreshConfig()
+                    end,
+                },
+
+                slowRechargeColor = {
+                    order = nextOrder(),
+                    type = "color",
+                    name = L["Normal Recharge"],
+                    desc = L["Color for normal recharge speed"],
+                    hasAlpha = true,
+                    get = function(info)
+                        local color = zSkyridingBar.db.profile.chargeBarNormalRechargeColor
+                        if not color then
+                            local defaults = zSkyridingBar.db.defaults.profile.chargeBarNormalRechargeColor
+                            return defaults[1], defaults[2], defaults[3], defaults[4]
+                        end
+                        return color[1], color[2], color[3], color[4]
+                    end,
+                    set = function(info, r, g, b, a)
+                        zSkyridingBar.db.profile.chargeBarNormalRechargeColor = { r, g, b, a }
                         zSkyridingBar:RefreshConfig()
                     end,
                 },
@@ -500,15 +575,15 @@ local options = {
                     name = "",
                 },
 
-                chargingChargeColor = {
+                fastRechargeColor = {
                     order = nextOrder(),
                     type = "color",
-                    name = L["Optimal Charge Color"],
-                    desc = L["Color when charge is charging at highest speed"],
+                    name = L["Fast Recharge"],
+                    desc = L["Color when recharge is at highest speed"],
                     hasAlpha = true,
                     get = function(info)
                         local color = zSkyridingBar.db.profile.chargeBarFastRechargeColor
-                        if not color then 
+                        if not color then
                             local defaults = zSkyridingBar.db.defaults.profile.chargeBarFastRechargeColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
@@ -522,12 +597,12 @@ local options = {
                 fullChargeChargeColor = {
                     order = nextOrder(),
                     type = "color",
-                    name = L["Full Charge Charge Color"],
-                    desc = L["Color when charge is at full charge"],
+                    name = L["Full Recharge"],
+                    desc = L["Color when recharge is full"],
                     hasAlpha = true,
                     get = function(info)
                         local color = zSkyridingBar.db.profile.chargeBarFullColor
-                        if not color then 
+                        if not color then
                             local defaults = zSkyridingBar.db.defaults.profile.chargeBarFullColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
@@ -551,7 +626,7 @@ local options = {
                     hasAlpha = true,
                     get = function(info)
                         local color = zSkyridingBar.db.profile.secondWindNoChargeColor
-                        if not color then 
+                        if not color then
                             local defaults = zSkyridingBar.db.defaults.profile.secondWindNoChargeColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
@@ -570,7 +645,7 @@ local options = {
                     hasAlpha = true,
                     get = function(info)
                         local color = zSkyridingBar.db.profile.secondWindOneChargeColor
-                        if not color then 
+                        if not color then
                             local defaults = zSkyridingBar.db.defaults.profile.secondWindOneChargeColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
@@ -594,7 +669,7 @@ local options = {
                     hasAlpha = true,
                     get = function(info)
                         local color = zSkyridingBar.db.profile.secondWindTwoChargeColor
-                        if not color then 
+                        if not color then
                             local defaults = zSkyridingBar.db.defaults.profile.secondWindTwoChargeColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
@@ -613,7 +688,7 @@ local options = {
                     hasAlpha = true,
                     get = function(info)
                         local color = zSkyridingBar.db.profile.secondWindThreeChargeColor
-                        if not color then 
+                        if not color then
                             local defaults = zSkyridingBar.db.defaults.profile.secondWindThreeChargeColor
                             return defaults[1], defaults[2], defaults[3], defaults[4]
                         end
@@ -636,15 +711,14 @@ local options = {
                     desc = L["Reset all color settings and textures to defaults"],
                     func = function()
                         local defaults = zSkyridingBar.db.defaults.profile
-                        zSkyridingBar.db.profile.speedBarColor = defaults.speedBarColor
+                        zSkyridingBar.db.profile.speedBarNormalColor = defaults.speedBarNormalColor
                         zSkyridingBar.db.profile.speedBarBoostColor = defaults.speedBarBoostColor
                         zSkyridingBar.db.profile.speedBarThrillColor = defaults.speedBarThrillColor
                         zSkyridingBar.db.profile.chargeBarColor = defaults.chargeBarColor
                         zSkyridingBar.db.profile.chargeBarFastRechargeColor = defaults.chargeBarFastRechargeColor
                         zSkyridingBar.db.profile.speedIndicatorColor = defaults.speedIndicatorColor
                         zSkyridingBar.db.profile.chargeBarFullColor = defaults.chargeBarFullColor
-                        zSkyridingBar.db.profile.chargeBarSlowRechargeColor = defaults.chargeBarSlowRechargeColor
-                        zSkyridingBar.db.profile.chargeBarEmptyColor = defaults.chargeBarEmptyColor
+                        zSkyridingBar.db.profile.chargeBarNormalRechargeColor = defaults.chargeBarNormalRechargeColor
                         zSkyridingBar.db.profile.speedBarTexture = defaults.speedBarTexture
                         zSkyridingBar.db.profile.chargeBarTexture = defaults.chargeBarTexture
                         zSkyridingBar.db.profile.speedBarBackgroundColor = defaults.speedBarBackgroundColor
@@ -654,6 +728,7 @@ local options = {
                         zSkyridingBar.db.profile.secondWindTwoChargeColor = defaults.secondWindTwoChargeColor
                         zSkyridingBar.db.profile.secondWindThreeChargeColor = defaults.secondWindThreeChargeColor
                         zSkyridingBar:RefreshConfig()
+                        zSkyridingBar:UpdateFonts()
                         zSkyridingBar:Print(L["Reset colors and textures to defaults."])
                     end,
                 },
