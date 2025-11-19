@@ -322,7 +322,11 @@ local function smoothSetValue(bar, targetValue)
 
     local startValue = bar.currentValue
     local startTime = GetTime()
-    local duration = 0.2
+    local duration = 0.05
+
+    if CompatCheck then
+        local duration = 0.2
+    end
 
     bar.smoothTimer = zSkyridingBar:ScheduleRepeatingTimer(function()
         local elapsed = GetTime() - startTime
