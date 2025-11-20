@@ -304,30 +304,30 @@ end
 
 local function AnimateStatusBar(bar, targetValue, smoothFactor)
     if not bar or not hasSkyriding then return end
-    
+
     -- Initialize current value if needed
     if not bar.currentValue then
         bar.currentValue = bar:GetValue()
     end
-    
+
     bar.targetValue = targetValue
-    
+
     if not bar.animating then
         bar.animating = true
-        
+
         bar:SetScript("OnUpdate", function(self, elapsed)
             if not self.targetValue then
                 self:SetScript("OnUpdate", nil)
                 self.animating = false
                 return
             end
-            
+
             -- Exponential smoothing (lerp)
             -- Lower smoothFactor = smoother but slower
             -- Higher smoothFactor = faster but more jittery
             local factor = math.min(1, (smoothFactor or 8) * elapsed)
             local diff = self.targetValue - self.currentValue
-            
+
             if math.abs(diff) < 0.01 then
                 self.currentValue = self.targetValue
                 self:SetValue(self.targetValue)
@@ -335,7 +335,7 @@ local function AnimateStatusBar(bar, targetValue, smoothFactor)
                 self.animating = false
                 return
             end
-            
+
             self.currentValue = self.currentValue + (diff * factor)
             self:SetValue(self.currentValue)
         end)
@@ -354,10 +354,17 @@ local function createMoveableFrameHeader(frame, frameName)
     frame:SetScript("OnDragStart", function(self)
         if moveMode and not InCombatLockdown() then
             self:StartMoving()
+        else
+            self.print("Cannot move frame while in combat. Retry after combat ends.")
+            return
         end
     end)
 
     frame:SetScript("OnDragStop", function(self)
+        if InCombatLockdown() then
+            self.print("Cannot move frame while in combat. Retry after combat ends.")
+            return
+        end
         self:StopMovingOrSizing()
         -- Save position
         local point, _, relPoint, xOfs, yOfs = self:GetPoint()
@@ -440,7 +447,6 @@ function zSkyridingBar:OnInitialize()
             if CompatCheck then
                 local widgetInfo = select(1, ...)
                 zSkyridingBar:UpdateVigorFromWidget(widgetInfo)
-
             end
         end
     end)
@@ -574,6 +580,10 @@ function zSkyridingBar:RefreshConfig()
     applyTheme(self.db.profile.theme)
     -- Update frame positions and appearance without destroying
     --self:UpdateFramePositions()
+    if InCombatLockdown() then
+        self.print("Cannot update UI while in combat. Retry after combat ends.")
+        return
+    end
     self:UpdateAllFrameAppearance()
     self:UpdateFonts()
     -- Update default vigor UI visibility
@@ -591,6 +601,10 @@ function zSkyridingBar:CreateAllFrames()
     self:CreateChargesBarFrame()
     self:CreateSpeedAbilityFrame()
     self:CreateSecondWindFrame()
+    if InCombatLockdown() then
+        self.print("Cannot update UI while in combat. Retry after combat ends.")
+        return
+    end
     if CompatCheck then
         if UIWidgetPowerBarContainerFrame and UIWidgetPowerBarContainerFrame:IsVisible() then
             UIWidgetPowerBarContainerFrame:Hide()
@@ -599,7 +613,6 @@ function zSkyridingBar:CreateAllFrames()
 end
 
 function zSkyridingBar:CreateSpeedBarFrame()
-
     speedBarFrame = CreateFrame("Frame", "zSkyridingBarSpeedBarFrame", UIParent)
     speedBarFrame:SetSize(self.db.profile.speedBarWidth, self.db.profile.speedBarHeight)
     speedBarFrame:SetPoint("CENTER", UIParent, "CENTER", self.db.profile.speedBarX, self.db.profile.speedBarY)
@@ -1071,7 +1084,6 @@ end
 
 if CompatCheck then
     function zSkyridingBar:OnUpdateUIWidget(widgetInfo)
-
         -- Handle UI widget updates for vigor bars
         if widgetInfo and widgetInfo.widgetSetID == 283 then
             -- Debug: print("Vigor widget update received:", widgetInfo.widgetID)
@@ -1123,6 +1135,7 @@ function zSkyridingBar:CheckSkyridingAvailability()
 end
 
 function zSkyridingBar:StartTracking()
+    if InCombatLockdown() then return end
     if not updateHandle then
         active = true
         updateHandle = self:ScheduleRepeatingTimer("UpdateTracking", TICK_RATE)
@@ -1158,13 +1171,13 @@ function zSkyridingBar:StopTracking()
     if chargesBarFrame then chargesBarFrame:Hide() end
     if speedAbilityFrame then speedAbilityFrame:Hide() end
     if secondWindFrame then secondWindFrame:Hide() end
+    if InCombatLockdown() then return end
     if CompatCheck then
         if UIWidgetPowerBarContainerFrame then UIWidgetPowerBarContainerFrame:Show() end
     end
 end
 
 function zSkyridingBar:UpdateTracking()
-
     if not active then
         self:CheckSkyridingAvailability()
         if not active then
@@ -1173,7 +1186,7 @@ function zSkyridingBar:UpdateTracking()
     end
 
     if not speedBar then return end
-
+    if InCombatLockdown() then return end
     if CompatCheck then
         if UIWidgetPowerBarContainerFrame and UIWidgetPowerBarContainerFrame:IsVisible() then
             UIWidgetPowerBarContainerFrame:Hide()
@@ -1239,7 +1252,6 @@ function zSkyridingBar:UpdateTracking()
 end
 
 function zSkyridingBar:UpdatespeedBarNormalColors(currentSpeed)
-
     if not speedBar or InCombatLockdown() then return end
 
     local thrill = C_UnitAuras.GetPlayerAuraBySpellID(THRILL_BUFF_ID)
@@ -1257,7 +1269,7 @@ end
 
 if CompatCheck then
     function zSkyridingBar:UpdateVigorFromWidget(widgetInfo)
-
+        if InCombatLockdown() then return end
         -- Use UI widget system like WeakAuras does
         if not widgetInfo or not widgetInfo.widgetID then
             return
@@ -1309,6 +1321,7 @@ if CompatCheck then
 end
 
 function zSkyridingBar:UpdateChargeBars()
+    if InCombatLockdown() then return end
     if not chargeFrame or not chargeFrame.bars or InCombatLockdown() then return end
 
     if CompatCheck then
@@ -1377,7 +1390,6 @@ function zSkyridingBar:UpdateChargeBars()
 end
 
 function zSkyridingBar:UpdateStaticChargeAndWhirlingSurge()
-
     if InCombatLockdown() then return end
     if not speedAbilityFrame or InCombatLockdown() then return end
 
