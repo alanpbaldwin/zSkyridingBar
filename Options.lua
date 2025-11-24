@@ -16,10 +16,6 @@ local function resetOrder()
     orderCounter = 0
 end
 
--- Custom print function for addon messages
-function zSkyridingBar:Print(message)
-    print("zSkyridingBar: " .. message)
-end
 
 -- Options table
 local options = {
@@ -67,7 +63,7 @@ local options = {
             func = function()
                 zSkyridingBar.db:ResetProfile()
                 zSkyridingBar:RefreshConfig()
-                zSkyridingBar:Print(L["Reset all settings to default."])
+                zSkyridingBar.print(L["Reset all settings to default."])
             end,
             width = 0.8,
         },
@@ -385,7 +381,7 @@ local options = {
                         zSkyridingBar:RefreshConfig()
                         zSkyridingBar:UpdateFramePositions()
                         zSkyridingBar:UpdateFonts()
-                        zSkyridingBar:Print(L["Reset position and size to defaults."])
+                        zSkyridingBar.print(L["Reset position and size to defaults."])
                     end,
                 },
             },
@@ -750,7 +746,7 @@ local options = {
                         zSkyridingBar.db.profile.secondWindThreeChargeColor = defaults.secondWindThreeChargeColor
                         zSkyridingBar:RefreshConfig()
                         zSkyridingBar:UpdateFonts()
-                        zSkyridingBar:Print(L["Reset colors and textures to defaults."])
+                        zSkyridingBar.print(L["Reset colors and textures to defaults."])
                     end,
                 },
             },
