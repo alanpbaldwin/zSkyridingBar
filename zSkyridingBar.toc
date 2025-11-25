@@ -21,7 +21,6 @@ Libs\AceLocale-3.0\AceLocale-3.0.xml
 Libs\LibSharedMedia-3.0\lib.xml
 
 Locales\enUS.lua
-Locales\enGB.lua
 Locales\deDE.lua
 Locales\frFR.lua
 Locales\esES.lua

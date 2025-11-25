@@ -5,6 +5,9 @@
 local zSkyridingBar = LibStub("AceAddon-3.0"):NewAddon("zSkyridingBar", "AceTimer-3.0")
 local BuildVersion, BuildBuild, BuildDate, BuildInterface = GetBuildInfo()
 
+-- Get localization from AceLocale
+local L = LibStub("AceLocale-3.0"):GetLocale("zSkyridingBar")
+
 -- print function that accepts everything normal print would, like args and variables etc. I can  pass multiple args and concatenated strings
 function zSkyridingBar.print(...)
     local args = { ... }
@@ -493,9 +496,9 @@ function zSkyridingBar:OnPlayerLogin()
     -- Apply fonts after a short delay to ensure LibSharedMedia is ready
     C_Timer.After(2.5, function()
         self:UpdateFonts()
-        zSkyridingBar.print("Detected interface version " .. BuildInterface)
+        zSkyridingBar.print(L["Detected interface version "] .. BuildInterface)
         if CompatCheck then
-            zSkyridingBar.print("Compatibility mode enabled")
+            zSkyridingBar.print(L["Compatibility mode enabled"])
         end
     end)
     self:InitializeOptions()
@@ -623,7 +626,7 @@ function zSkyridingBar:RefreshConfig()
     -- Update frame positions and appearance without destroying
     --self:UpdateFramePositions()
     if InCombatLockdown() then
-        zSkyridingBar.print("Cannot update UI while in combat. Retry after combat ends.")
+        zSkyridingBar.print(L["Combat lockdown active. UI updates paused."])
         return
     end
     self:UpdateAllFrameAppearance()
@@ -645,7 +648,7 @@ function zSkyridingBar:CreateAllFrames()
     self:CreateSecondWindFrame()
     self:CreateMasterMoveFrame()
     if InCombatLockdown() then
-        zSkyridingBar.print("Cannot update UI while in combat. Retry after combat ends.")
+        zSkyridingBar.print(L["Combat lockdown active. UI updates paused."])
         return
     end
     if CompatCheck then
@@ -1097,16 +1100,16 @@ function zSkyridingBar:ToggleMoveMode()
     moveMode = not moveMode
 
     if InCombatLockdown() then
-        zSkyridingBar.print("Cannot use move mode while in combat.")
+        zSkyridingBar.print(L["Combat lockdown active. UI updates paused."])
         moveMode = false
     end
 
     if moveMode then
-        zSkyridingBar.print("Move mode enabled - Drag frames to reposition.")
+        zSkyridingBar.print(L["Move mode enabled - Drag frames to reposition."])
         -- Create a text frame in the middle of the screen that says "zSkyridingBar Move Mode Active"
         if not moveModeText then
             moveModeText = UIParent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-            moveModeText:SetText("zSkyridingBar Move Mode Active")
+            moveModeText:SetText(L["zSkyridingBar Move Mode Active"])
             moveModeText:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
         end
         moveModeText:Show()
@@ -1129,7 +1132,7 @@ function zSkyridingBar:ToggleMoveMode()
             if masterMoveFrame then masterMoveFrame:Show() end
         end
     else
-        zSkyridingBar.print("Move mode disabled.")
+        zSkyridingBar.print(L["Move mode disabled."])
 
         -- remove the moveModeText
         if moveModeText then
@@ -1197,7 +1200,7 @@ if CompatCheck then
         -- Handle UI widget updates for vigor bars
         if widgetInfo and widgetInfo.widgetSetID == 283 then
             -- Debug: print("Vigor widget update received:", widgetInfo.widgetID)
-            zSkyridingBar.print("Vigor widget update received: " .. widgetInfo.widgetID)
+            --zSkyridingBar.print("Vigor widget update received: " .. widgetInfo.widgetID)
             self:UpdateVigorFromWidget(widgetInfo)
         end
     end
@@ -1896,14 +1899,14 @@ SlashCmdList["ZSKYRIDINGBAR"] = function(msg)
         if LibStub and LibStub("AceConfigDialog-3.0", true) and zSkyridingBar.optionsRegistered then
             LibStub("AceConfigDialog-3.0"):Open("zSkyridingBar")
         else
-            print("|cff00ff00zSkyridingBar|r: Options not ready yet.")
+            zSkyridingBar.print(L["Options not ready yet."])
         end
     elseif msg == "move" then
         zSkyridingBar:ToggleMoveMode()
     else
-        print("|cff00ff00zSkyridingBar|r commands:")
-        print("  |cffFFFFFF/zsb|r - Open options")
-        print("  |cffFFFFFF/zsb move|r - Toggle move mode")
-        print("  |cffFFFFFF/zsb toggle|r - Toggle addon")
+        zSkyridingBar.print(L["Commands:"])
+        zSkyridingBar.print("  /zsb - " .. L["Open options"])
+        zSkyridingBar.print("  /zsb move - " .. L["Toggle move mode"])
+        zSkyridingBar.print("  /zsb toggle - " .. L["Toggle addon"])
     end
 end

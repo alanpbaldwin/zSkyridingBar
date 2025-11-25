@@ -1,6 +1,8 @@
+
 local L = LibStub("AceLocale-3.0"):NewLocale("zSkyridingBar", "enUS", true)
 if not L then return end
 
+-- General/UI/Options
 L["zSkyridingBar Options"] = "zSkyridingBar Options"
 L["Enable"] = "Enable"
 L["Enable/disable the addon"] = "Enable/disable the addon"
@@ -83,7 +85,6 @@ L["Recharge Indicator Color"] = "Recharge Indicator Color"
 L["Reset all settings to default."] = "Reset all settings to default."
 L["Reset colors and textures to defaults."] = "Reset colors and textures to defaults."
 L["Reset position and size to defaults."] = "Reset position and size to defaults."
-
 L["No Wind"] = "No Wind"
 L["Color when there are no second wind charges"] = "Color when there are no second wind charges"
 L["One Wind"] = "One Wind"
@@ -92,7 +93,6 @@ L["Two Winds"] = "Two Winds"
 L["Color when there are 2 second wind charges"] = "Color when there are 2 second wind charges"
 L["Three Wind"] = "Three Wind"
 L["Color when there are 3 second wind charges"] = "Color when there are 3 second wind charges"
-
 L["Font Size"] = "Font Size"
 L["Set the font size"] = "Set the font size"
 L["Font Face"] = "Font Face"
@@ -105,4 +105,18 @@ L["None"] = "None"
 L["Outline"] = "Outline"
 L["Thick Outline"] = "Thick Outline"
 L["Monochrome"] = "Monochrome"
+
+-- Print/Command/Status strings from zSkyridingBar.lua
+L["Detected interface version "] = "Detected interface version "
+L["Compatibility mode enabled"] = "Compatibility mode enabled"
+L["Combat lockdown active. UI updates paused."] = "Combat lockdown active. UI updates paused."
+L["Move mode enabled - Drag frames to reposition."] = "Move mode enabled - Drag frames to reposition."
+L["zSkyridingBar Move Mode Active"] = "zSkyridingBar Move Mode Active"
+L["Move mode disabled."] = "Move mode disabled."
+L["Options not ready yet."] = "Options not ready yet."
+L["Commands:"] = "Commands:"
+L["Open options"] = "Open options"
+L["Toggle move mode"] = "Toggle move mode"
+L["Toggle addon"] = "Toggle addon"
+L["Second Wind Charges"] = "Second Wind Charges"
 
