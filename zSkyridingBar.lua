@@ -435,7 +435,7 @@ function zSkyridingBar:OnInitialize()
     end
 
     eventFrame:SetScript("OnEvent", function(frame, event, ...)
-        if InCombatLockdown() then return end
+        -- if InCombatLockdown() then return end
         if EditModeManagerFrame and EditModeManagerFrame.editModeActive then return end
         if event == "ADDON_LOADED" and select(1, ...) == "zSkyridingBar" then
             zSkyridingBar:OnAddonLoaded()
@@ -462,7 +462,7 @@ function zSkyridingBar:OnInitialize()
             local unitTarget, powerType = select(1, ...), select(2, ...)
             zSkyridingBar:OnUnitPowerUpdate(unitTarget, powerType)
         elseif event == "PLAYER_CAN_GLIDE_CHANGED" then
-            if InCombatLockdown() then return end
+            -- if InCombatLockdown() then return end
             if EditModeManagerFrame and EditModeManagerFrame.editModeActive then return end
             zSkyridingBar:CheckSkyridingAvailability()
             local isGliding, isFlying, forwardSpeed = C_PlayerInfo.GetGlidingInfo()
