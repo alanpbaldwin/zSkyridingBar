@@ -416,7 +416,7 @@ end
 
 -- Addon lifecycle
 function zSkyridingBar:OnInitialize()
-    self.db = LibStub("AceDB-3.0"):New("zSkyridingBarDB", defaults, true)
+    self.db = LibStub("AceDB-3.0"):New("zSkyridingBarDB", defaults, "Default")
 
     -- Event frame for event handling
     local eventFrame = CreateFrame("Frame")
@@ -507,6 +507,9 @@ end
 function zSkyridingBar:InitializeOptions()
     local optionsTable = self:GetOptionsTable()
     if optionsTable then
+        -- Insert the profiles option table
+        optionsTable.args.profiles = LibStub("AceDBOptions-3.0"):GetOptionsTable(self.db)
+        
         LibStub("AceConfig-3.0"):RegisterOptionsTable("zSkyridingBar", optionsTable)
         LibStub("AceConfigDialog-3.0"):AddToBlizOptions("zSkyridingBar", "zSkyridingBar")
         self.optionsRegistered = true
